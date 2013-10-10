@@ -13,40 +13,51 @@ showRow([], 6):-
 showRow([A,B,C,D,E | Tail], N) :-
         print('|-----------------------|'), nl,
         print('| '), print(N), print(' |'),      % row number
-        printPos(A), printPos(B), printPos(C), printPos(D), printPos(E), nl,
+        printPiece(A), printPiece(B), printPiece(C), printPiece(D), printPiece(E), nl,
         N2 is N+1,
         showRow(Tail, N2).
 
-printPos(b):- print('   |').
-printPos(X):- print(' '), print(X), print(' |').
-
+printPiece(b):- print('   |').
+printPiece(X):- print(' '), print(X), print(' |').
 
 
 % GAME FUNCTIONS
 
 choko:-  game([b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b], x).
          
- game(Board , x) :-     moveUser(Board , NewBoard), game(NewBoard, x).
-%game(Board , o) :- moveComputer(Board , NewBoard), game(NewBoard , x).
+game(Board , x) :- moveUser(Board , NewBoard), game(NewBoard, o).
+game(Board , o) :- moveUser(Board , NewBoard), game(NewBoard ,x).
+
+getPosition(Row, Column):-
+        getRow(Row),
+        getColumn(Column),
+        get_char(_).
+
+% 'a' to 1
+getColumn(Column) :-
+        get_code(Code),
+        Column is Code - 96.
+
+% '1' to 1
+getRow(Row) :-
+        get_code(Code),
+        Row is Code - 48.
 
 moveUser(Board , NewBoard) :- 
-        showBoard(Board), 
+        showBoard(Board),!,    % cut will terminate game if the next input fails
         print('Select position (ex: 3c, 1b..)'), nl, print('> '),
-        get_code(Row),
-        RowNum is Row - 48,         % '1' to 1
-        get_code(Column),
-        ColumnNum is Column - 96,   % 'a' to 1
-        get_char(_),
-        playAt(x, RowNum, ColumnNum, Board, NewBoard).
+        getPosition(RowNumber, ColumnNumber),
+        playAt(x, RowNumber, ColumnNumber, Board, NewBoard).
 
 playAt(Player, 1, 1, [b|Tail], [Player|Tail]).
 
 playAt(Player, 1, Column, [H | TBoard], [H | TNewBoard]) :-
         NextCol is Column-1,
+        NextCol > 0,
         playAt(Player, 1, NextCol, TBoard, TNewBoard).
-
 
 playAt(Player, Row, Column, [A,B,C,D,E | TBoard], [A,B,C,D,E | TNewBoard]) :- 
         NextRow is Row-1,
+        NextRow > 0,
         playAt(Player, NextRow, Column, TBoard, TNewBoard).
         
