@@ -2,20 +2,30 @@
 
 showBoard([]).
 
-showBoard(B) :- 
-        print('    /-------------------\\'), nl,
-        print('    | a | b | c | d | e |'), nl, 
-        showRow(B, 1).
+showPieces(x, 0).
+showPieces(o, 0).
 
-showRow([], 6):-
-        print('\\-----------------------/'), nl.
+showPieces(Player, NumPieces):-
+        print(' | '), print(Player),
+        NextNumPieces is NumPieces-1,
+        showPieces(Player, NextNumPieces).
 
-showRow([A,B,C,D,E | Tail], N) :-
-        print('|-----------------------|'), nl,
-        print('| '), print(N), print('||'),      % row number
+showBoard(B, P1UnusedPieces, P2UnusedPieces) :-
+        showPieces(o, P2UnusedPieces), nl, nl,
+        print('     /-------------------\\ '), nl,
+        print('     | a | b | c | d | e |'), nl, 
+        showRow(B, 1, P1UnusedPieces, P2UnusedPieces).
+
+showRow([], 6, P1UnusedPieces, _):-
+        print(' \\-----------------------/ '), nl, nl,
+        showPieces(x, P1UnusedPieces), nl.
+
+showRow([A,B,C,D,E | Tail], N, P1UnusedPieces, P2UnusedPieces) :-
+        print(' |-----------------------|'), nl,
+        print(' | '), print(N), print('||'),      % row number
         printPiece(A), printPiece(B), printPiece(C), printPiece(D), printPiece(E), nl,
         N2 is N+1,
-        showRow(Tail, N2).
+        showRow(Tail, N2, P1UnusedPieces, P2UnusedPieces).
 
 printPiece(b):- print('   |').
 printPiece(X):- print(' '), print(X), print(' |').
@@ -23,10 +33,15 @@ printPiece(X):- print(' '), print(X), print(' |').
 
 % GAME FUNCTIONS
 
-choko:-  game([b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b], x).
+choko:-  game([b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b], x, 12, 12).
          
-game(Board , x) :- moveUser(Board , NewBoard), game(NewBoard, o).
-game(Board , o) :- moveUser(Board , NewBoard), game(NewBoard ,x).
+game(Board , x, P1UnusedPieces, P2UnusedPieces) :- 
+        userTurn(x, Board , NewBoard, P1UnusedPieces, P2UnusedPieces, NewP1UnusedPieces),
+        game(NewBoard, o, NewP1UnusedPieces, P2UnusedPieces).
+
+game(Board , o, P1UnusedPieces, P2UnusedPieces) :- 
+        userTurn(o, Board , NewBoard, P1UnusedPieces, P2UnusedPieces, NewP2UnusedPieces),
+        game(NewBoard, x, P1UnusedPieces, NewP2UnusedPieces).
 
 getPosition(Row, Column):-
         getRow(Row),
@@ -43,21 +58,21 @@ getRow(Row) :-
         get_code(Code),
         Row is Code - 48.
 
-moveUser(Board , NewBoard) :- 
-        showBoard(Board),!,    % cut will terminate game if the next input fails
+userTurn(Player, Board , NewBoard, P1UnusedPieces, P2UnusedPieces, NewP1UnusedPieces) :- 
+        showBoard(Board, P1UnusedPieces, P2UnusedPieces), !,    % cut will terminate game if the next input fails
         print('Select position (ex: 3c, 1b..)'), nl, print('> '),
         getPosition(RowNumber, ColumnNumber),
-        playAt(x, RowNumber, ColumnNumber, Board, NewBoard).
+        dropPiece(Player, RowNumber, ColumnNumber, Board, NewBoard, P1UnusedPieces, NewP1UnusedPieces).
 
-playAt(Player, 1, 1, [b|Tail], [Player|Tail]).
+dropPiece(Player, 1, 1, [b|Tail], [Player|Tail], UnusedPieces, UnusedPieces-1).
 
-playAt(Player, 1, Column, [H | TBoard], [H | TNewBoard]) :-
+dropPiece(Player, 1, Column, [H | TBoard], [H | TNewBoard], UnusedPieces, NewUnusedPieces) :-
         NextCol is Column-1,
         NextCol > 0,
-        playAt(Player, 1, NextCol, TBoard, TNewBoard).
+        dropPiece(Player, 1, NextCol, TBoard, TNewBoard, UnusedPieces, NewUnusedPieces).
 
-playAt(Player, Row, Column, [A,B,C,D,E | TBoard], [A,B,C,D,E | TNewBoard]) :- 
+dropPiece(Player, Row, Column, [A,B,C,D,E | TBoard], [A,B,C,D,E | TNewBoard], UnusedPieces, NewUnusedPieces) :- 
         NextRow is Row-1,
         NextRow > 0,
-        playAt(Player, NextRow, Column, TBoard, TNewBoard).
+        dropPiece(Player, NextRow, Column, TBoard, TNewBoard, UnusedPieces, NewUnusedPieces).
         
