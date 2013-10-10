@@ -30,6 +30,12 @@ showRow([A,B,C,D,E | Tail], N, P1UnusedPieces, P2UnusedPieces) :-
 printPiece(b):- print('   |').
 printPiece(X):- print(' '), print(X), print(' |').
 
+% UTILITY FUNCTIONS
+
+nth(1,[H|_],H) :- !.
+nth(X,[_|T],NTH) :- 
+        NextX is X-1, 
+        nth(NextX, T, NTH).
 
 % GAME FUNCTIONS
 
@@ -58,11 +64,39 @@ getRow(Row) :-
         get_code(Code),
         Row is Code - 48.
 
+% TODO this bugs with '1a' and gives nth(0, ...)
+empty(Row, Column, Board) :-
+        nth(Column + 5*(Row-1), Board, b).
+
 userTurn(Player, Board , NewBoard, P1UnusedPieces, P2UnusedPieces, NewP1UnusedPieces) :- 
         showBoard(Board, P1UnusedPieces, P2UnusedPieces), !,    % cut will terminate game if the next input fails
         print('Select position (ex: 3c, 1b..)'), nl, print('> '),
         getPosition(RowNumber, ColumnNumber),
-        dropPiece(Player, RowNumber, ColumnNumber, Board, NewBoard, P1UnusedPieces, NewP1UnusedPieces).
+        (empty(RowNumber, ColumnNumber, Board) -> 
+                dropPiece(Player, RowNumber, ColumnNumber, Board, NewBoard, P1UnusedPieces, NewP1UnusedPieces);
+                movePiece(Player, RowNumber, ColumnNumber, Board, NewBoard)
+                % TODO this bugs the unused pieces because we must define them according to the player
+        ).
+        
+removePiece(1, 1, [_|Tail], [b|Tail]).
+
+removePiece(1, Column, [H | TBoard], [H | TNewBoard]):-
+        NextCol is Column-1,
+        NextCol > 0,
+        removePiece(1, NextCol, TBoard, TNewBoard).
+        
+removePiece(Row, Column, [A,B,C,D,E | TBoard], [A,B,C,D,E | TNewBoard]) :-
+        NextRow is Row-1,
+        NextRow > 0,
+        removePiece(NextRow, Column, TBoard, TNewBoard).
+        
+
+movePiece(Player, Row, Column, Board, NewBoard):-
+        print('Select position to move the piece to (ex: 1a, 5e...)'), nl, print('> '),
+        getPosition(NewRow,NewColumn),
+        removePiece(Row, Column, Board, TempBoard),
+        dropPiece(Player, NewRow, NewColumn, TempBoard, NewBoard, _, _).
+        
 
 dropPiece(Player, 1, 1, [b|Tail], [Player|Tail], UnusedPieces, UnusedPieces-1).
 
