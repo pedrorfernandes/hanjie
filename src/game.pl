@@ -3,8 +3,8 @@
 showBoard([]).
 
 showBoard(B) :- 
-        print('/-----------------------\\'), nl,
-        print('|   | a | b | c | d | e |'), nl, 
+        print('    /-------------------\\'), nl,
+        print('    | a | b | c | d | e |'), nl, 
         showRow(B, 1).
 
 showRow([], 6):-
@@ -12,7 +12,7 @@ showRow([], 6):-
 
 showRow([A,B,C,D,E | Tail], N) :-
         print('|-----------------------|'), nl,
-        print('| '), print(N), print(' |'),      % row number
+        print('| '), print(N), print('||'),      % row number
         printPiece(A), printPiece(B), printPiece(C), printPiece(D), printPiece(E), nl,
         N2 is N+1,
         showRow(Tail, N2).
