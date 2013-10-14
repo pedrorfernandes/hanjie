@@ -41,15 +41,18 @@ nth(X,[_|T],NTH) :-
 
 choko:-  game([b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b], x, 12, 12).
          
-game(Board , x, P1UnusedPieces, P2UnusedPieces) :- 
-        userTurn(x, Board , NewBoard, P1UnusedPieces, P2UnusedPieces, NewP1UnusedPieces),
+game(Board, x, P1UnusedPieces, P2UnusedPieces) :- 
+        showBoard(Board, P1UnusedPieces, P2UnusedPieces), !,
+                                % cut will terminate game if the next input fails
+        userTurn(x, Board , NewBoard, P1UnusedPieces, NewP1UnusedPieces),
         game(NewBoard, o, NewP1UnusedPieces, P2UnusedPieces).
 
-game(Board , o, P1UnusedPieces, P2UnusedPieces) :- 
-        userTurn(o, Board , NewBoard, P1UnusedPieces, P2UnusedPieces, NewP2UnusedPieces),
+game(Board, o, P1UnusedPieces, P2UnusedPieces) :- 
+        showBoard(Board, P1UnusedPieces, P2UnusedPieces), !,
+        userTurn(o, Board , NewBoard, P2UnusedPieces, NewP2UnusedPieces),
         game(NewBoard, x, P1UnusedPieces, NewP2UnusedPieces).
 
-getPosition(Row, Column):-
+inputPosition(Row, Column):-
         getRow(Row),
         getColumn(Column),
         get_char(_).
@@ -64,19 +67,40 @@ getRow(Row) :-
         get_code(Code),
         Row is Code - 48.
 
-% TODO this bugs with '1a' and gives nth(0, ...)
 empty(Row, Column, Board) :-
-        nth(Column + 5*(Row-1), Board, b).
+        Position is Column + 5*(Row-1),
+        nth(Position, Board, b).
 
-userTurn(Player, Board , NewBoard, P1UnusedPieces, P2UnusedPieces, NewP1UnusedPieces) :- 
-        showBoard(Board, P1UnusedPieces, P2UnusedPieces), !,    % cut will terminate game if the next input fails
+isOccupiedBy(Piece, Row, Column, Board):-
+        Position is Column + 5*(Row-1),
+        nth(Position, Board, Piece).
+
+upDownLeftOrRight(Row, Column, NewRow, NewColumn):-
+        NewRow is Row-1;
+        NewRow is Row+1;
+        NewColumn is Column-1;
+        NewColumn is Column+1.
+
+% TODO valid move should also check for a valid attack
+validMove(Player, Row, Column, NewRow, NewColumn, Board):-
+        upDownLeftOrRight(Row, Column, NewRow, NewColumn),
+        empty(NewRow, NewColumn, Board).
+    
+
+userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces) :- 
         print('Select position (ex: 3c, 1b..)'), nl, print('> '),
-        getPosition(RowNumber, ColumnNumber),
-        (empty(RowNumber, ColumnNumber, Board) -> 
-                dropPiece(Player, RowNumber, ColumnNumber, Board, NewBoard, P1UnusedPieces, NewP1UnusedPieces);
-                movePiece(Player, RowNumber, ColumnNumber, Board, NewBoard)
-                % TODO this bugs the unused pieces because we must define them according to the player
+        inputPosition(Row, Column),
+        (     % if
+                empty(Row, Column, Board) -> 
+                       dropPiece(Player, Row, Column, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces);
+              % if
+                isOccupiedBy(Player, Row, Column, Board) ->
+                       movePiece(Player, Row, Column, Board, NewBoard);
+              % else
+                print('Invalid selection!'), nl,
+                userTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces)
         ).
+        
         
 removePiece(1, 1, [_|Tail], [b|Tail]).
 
@@ -93,7 +117,8 @@ removePiece(Row, Column, [A,B,C,D,E | TBoard], [A,B,C,D,E | TNewBoard]) :-
 
 movePiece(Player, Row, Column, Board, NewBoard):-
         print('Select position to move the piece to (ex: 1a, 5e...)'), nl, print('> '),
-        getPosition(NewRow,NewColumn),
+        inputPosition(NewRow,NewColumn),
+        validMove(Player, Row, Column, NewRow, NewColumn, Board),
         removePiece(Row, Column, Board, TempBoard),
         dropPiece(Player, NewRow, NewColumn, TempBoard, NewBoard, _, _).
         
