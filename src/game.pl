@@ -55,7 +55,7 @@ game(Board, o, P1UnusedPieces, P2UnusedPieces) :-
 inputPosition(Row, Column):-
         getRow(Row),
         getColumn(Column),
-        get_char(_).
+        skip_line.
 
 % 'a' to 1
 getColumn(Column) :-
@@ -75,21 +75,33 @@ isOccupiedBy(Piece, Row, Column, Board):-
         Position is Column + 5*(Row-1),
         nth(Position, Board, Piece).
 
-upDownLeftOrRight(Row, Column, NewRow, NewColumn, Distance):-
-        NewRow is Row-Distance;
-        NewRow is Row+Distance;
-        NewColumn is Column-Distance;
-        NewColumn is Column+Distance.
+upDownLeftOrRight(Row, Column, NewRow, NewColumn):-
+        NewRow is Row-1, NewColumn is Column;
+        NewRow is Row+1, NewColumn is Column;
+        NewRow is Row,   NewColumn is Column-1; 
+        NewRow is Row,   NewColumn is Column+1.
 
-validMove(Player, Row, Column, NewRow, NewColumn, Board):-
-        upDownLeftOrRight(Row, Column, NewRow, NewColumn, 1),
-        empty(NewRow, NewColumn, Board);
-        validAttack(Player, Row, Column, NewRow, NewColumn, Board).
-        
-% TODO in progress
-validAttack(Player, Row, Column, NewRow, NewColumn, Board):-
-        upDownLeftOrRight(Row, Column, NewRow, NewColumn, 2).
+validMove(Row, Column, NewRow, NewColumn, Board):-
+        upDownLeftOrRight(Row, Column, NewRow, NewColumn),
+        empty(NewRow, NewColumn, Board).
 
+validAttack(Player, Row, Column, NewRow, NewColumn, EnemyRow, EnemyColumn, Board):-
+        NewRow is Row-2,                                     % player moves 2 positions up
+                isOccupiedBy(Enemy, Row-1, Column, Board),   % enemy is 1 position up
+                Enemy \= Player, Enemy \= b,                 % enemy isn't player or blank
+                EnemyRow is Row-1, EnemyColumn is Column;    % declares enemy position
+        NewRow is Row+2,
+                isOccupiedBy(Enemy, Row+1, Column, Board),
+                Enemy \= Player, Enemy \= b,
+                EnemyRow is Row+1, EnemyColumn is Column;
+        NewColumn is Column-2,
+                isOccupiedBy(Enemy, Row, Column-1, Board),
+                Enemy \= Player, Enemy \= b,
+                EnemyRow is Row, EnemyColumn is Column-1;
+        NewColumn is Column+2,
+                isOccupiedBy(Enemy, Row, Column+1, Board),
+                Enemy \= Player, Enemy \= b,
+                EnemyRow is Row, EnemyColumn is Column+1.
 
 userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces) :- 
         print('Select position (ex: 3c, 1b..)'), nl, print('> '),
@@ -97,7 +109,7 @@ userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces) :-
         (     % if
                 empty(Row, Column, Board) -> 
                        dropPiece(Player, Row, Column, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces);
-              % if
+              % else if
                 isOccupiedBy(Player, Row, Column, Board) ->
                        movePiece(Player, Row, Column, Board, NewBoard),
                        PlayerNewUnusedPieces is PlayerUnusedPieces;
@@ -123,9 +135,19 @@ removePiece(Row, Column, [A,B,C,D,E | TBoard], [A,B,C,D,E | TNewBoard]) :-
 movePiece(Player, Row, Column, Board, NewBoard):-
         print('Select position to move the piece to (ex: 1a, 5e...)'), nl, print('> '),
         inputPosition(NewRow,NewColumn),
-        validMove(Player, Row, Column, NewRow, NewColumn, Board),
-        removePiece(Row, Column, Board, TempBoard),
-        dropPiece(Player, NewRow, NewColumn, TempBoard, NewBoard, _, _).
+        (      % if 
+                validMove(Row, Column, NewRow, NewColumn, Board) ->
+                        removePiece(Row, Column, Board, TempBoard),
+                        dropPiece(Player, NewRow, NewColumn, TempBoard, NewBoard, _, _);
+               % else if 
+                validAttack(Player, Row, Column, NewRow, NewColumn, EnemyRow, EnemyColumn, Board) ->
+                        removePiece(Row, Column, Board, TempBoard1),
+                        removePiece(EnemyRow, EnemyColumn, TempBoard1, TempBoard2),
+                        dropPiece(Player, NewRow, NewColumn, TempBoard2, NewBoard, _, _);
+              % else
+                print('Invalid move or attack!'), nl,
+                movePiece(Player, Row, Column, Board, NewBoard)
+        ).
         
 
 dropPiece(Player, 1, 1, [b|Tail], [Player|Tail], UnusedPieces, UnusedPieces-1).
