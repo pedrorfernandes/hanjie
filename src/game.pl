@@ -75,17 +75,21 @@ isOccupiedBy(Piece, Row, Column, Board):-
         Position is Column + 5*(Row-1),
         nth(Position, Board, Piece).
 
-upDownLeftOrRight(Row, Column, NewRow, NewColumn):-
-        NewRow is Row-1;
-        NewRow is Row+1;
-        NewColumn is Column-1;
-        NewColumn is Column+1.
+upDownLeftOrRight(Row, Column, NewRow, NewColumn, Distance):-
+        NewRow is Row-Distance;
+        NewRow is Row+Distance;
+        NewColumn is Column-Distance;
+        NewColumn is Column+Distance.
 
-% TODO valid move should also check for a valid attack
 validMove(Player, Row, Column, NewRow, NewColumn, Board):-
-        upDownLeftOrRight(Row, Column, NewRow, NewColumn),
-        empty(NewRow, NewColumn, Board).
-    
+        upDownLeftOrRight(Row, Column, NewRow, NewColumn, 1),
+        empty(NewRow, NewColumn, Board);
+        validAttack(Player, Row, Column, NewRow, NewColumn, Board).
+        
+% TODO in progress
+validAttack(Player, Row, Column, NewRow, NewColumn, Board):-
+        upDownLeftOrRight(Row, Column, NewRow, NewColumn, 2).
+
 
 userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces) :- 
         print('Select position (ex: 3c, 1b..)'), nl, print('> '),
@@ -95,7 +99,8 @@ userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces) :-
                        dropPiece(Player, Row, Column, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces);
               % if
                 isOccupiedBy(Player, Row, Column, Board) ->
-                       movePiece(Player, Row, Column, Board, NewBoard);
+                       movePiece(Player, Row, Column, Board, NewBoard),
+                       PlayerNewUnusedPieces is PlayerUnusedPieces;
               % else
                 print('Invalid selection!'), nl,
                 userTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces)
