@@ -103,22 +103,29 @@ validMove(Row, Column, NewRow, NewColumn, Board):-
         empty(NewRow, NewColumn, Board).
 
 validAttack(Player, Row, Column, NewRow, NewColumn, EnemyRow, EnemyColumn, Board):-
-        NewRow is Row-2, NewColumn is Column,                % player moves 2 positions up
-                isOccupiedBy(Enemy, Row-1, Column, Board),   % enemy is 1 position up
-                Enemy \= Player, Enemy \= b,                 % enemy isn't player or blank
-                EnemyRow is Row-1, EnemyColumn is Column;    % declares enemy position
+        NewRow is Row-2, NewColumn is Column,        % player moves 2 positions up
+        empty(NewRow, NewColumn, Board),             % player moves to empty position
+        isOccupiedBy(Enemy, Row-1, Column, Board),   % enemy is 1 position up
+        Enemy \= Player, Enemy \= b,                 % enemy isn't player or blank
+        EnemyRow is Row-1, EnemyColumn is Column;    % declares enemy position
+        
         NewRow is Row+2, NewColumn is Column,
-                isOccupiedBy(Enemy, Row+1, Column, Board),
-                Enemy \= Player, Enemy \= b,
-                EnemyRow is Row+1, EnemyColumn is Column;
+        empty(NewRow, NewColumn, Board),
+        isOccupiedBy(Enemy, Row+1, Column, Board),
+        Enemy \= Player, Enemy \= b,
+        EnemyRow is Row+1, EnemyColumn is Column;
+
         NewColumn is Column-2, NewRow is Row,
-                isOccupiedBy(Enemy, Row, Column-1, Board),
-                Enemy \= Player, Enemy \= b,
-                EnemyRow is Row, EnemyColumn is Column-1;
+        empty(NewRow, NewColumn, Board),
+        isOccupiedBy(Enemy, Row, Column-1, Board),
+        Enemy \= Player, Enemy \= b,
+        EnemyRow is Row, EnemyColumn is Column-1;
+
         NewColumn is Column+2, NewRow is Row,
-                isOccupiedBy(Enemy, Row, Column+1, Board),
-                Enemy \= Player, Enemy \= b,
-                EnemyRow is Row, EnemyColumn is Column+1.
+        empty(NewRow, NewColumn, Board),
+        isOccupiedBy(Enemy, Row, Column+1, Board),
+        Enemy \= Player, Enemy \= b,
+        EnemyRow is Row, EnemyColumn is Column+1.
 
 userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces) :- 
         print('Select position (ex: 3c, 1b..)'), nl, print('> '),
