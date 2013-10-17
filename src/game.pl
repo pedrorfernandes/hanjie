@@ -12,8 +12,17 @@ showPieces(Player, NumPieces):-
 
 showBoard(B, P1UnusedPieces, P2UnusedPieces) :-
         showPieces(o, P2UnusedPieces), nl, nl,
-        print('     /-------------------\\ '), nl,
+        print('     /-------------------\\'), nl,
         print('     | a | b | c | d | e |'), nl, 
+        showRow(B, 1, P1UnusedPieces, P2UnusedPieces).
+
+showBoard(B, P1UnusedPieces, P2UnusedPieces, DropInitiative) :-
+        % if
+        (P1UnusedPieces =:= 0, P2UnusedPieces =:= 0) ->       % showing drop initiative
+                showBoard(B, P1UnusedPieces, P2UnusedPieces); % is irrelevant
+        showPieces(o, P2UnusedPieces), nl, nl,
+        print('     /-------------------\\    Drop'), nl,
+        print('     | a | b | c | d | e |     Initiative: '), print(DropInitiative), nl, 
         showRow(B, 1, P1UnusedPieces, P2UnusedPieces).
 
 showRow([], 6, P1UnusedPieces, _):-
@@ -51,22 +60,41 @@ count(X, [Y | T], N):-
 copy(L,R) :- accCp(L,R).
 accCp([],[]).
 accCp([H|T1],[H|T2]) :- accCp(T1,T2).
-        
+
+% this will return the opposing player
+versus(x, o).
+versus(o, x).
 
 % GAME FUNCTIONS
 
-choko:-  game([b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b], x, 12, 12).
-         
-game(Board, x, P1UnusedPieces, P2UnusedPieces) :- 
-        showBoard(Board, P1UnusedPieces, P2UnusedPieces), !,
-                                % cut will terminate game if the next input fails
-        userTurn(x, Board , NewBoard, P1UnusedPieces, NewP1UnusedPieces),
-        game(NewBoard, o, NewP1UnusedPieces, P2UnusedPieces).
+choko:-  game([b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b], x, 2, 2, x).
 
-game(Board, o, P1UnusedPieces, P2UnusedPieces) :- 
-        showBoard(Board, P1UnusedPieces, P2UnusedPieces), !,
-        userTurn(o, Board , NewBoard, P2UnusedPieces, NewP2UnusedPieces),
-        game(NewBoard, x, P1UnusedPieces, NewP2UnusedPieces).
+gameOver(Board, P1UnusedPieces, P2UnusedPieces):-
+        count(x, Board, Nx),
+        count(o, Board, No),
+        (Nx > 0, P1UnusedPieces > 0; No > 0, P2UnusedPieces > 0 ) ->
+                fail.
+
+printWinner(Board, P1UnusedPieces, P2UnusedPieces):-
+        print('cenas').
+
+% TODO detect game over is work in progress
+game(Board, x, P1UnusedPieces, P2UnusedPieces, DropInitiative) :- 
+        showBoard(Board, P1UnusedPieces, P2UnusedPieces, DropInitiative), !,
+                                % cut will terminate game if the next input fails
+        userTurn(x, Board , NewBoard, P1UnusedPieces, NewP1UnusedPieces, DropInitiative, NewDropInitiative),
+        (gameOver(NewBoard, NewP1UnusedPieces, P2UnusedPieces) ->
+                printWinner(Board, P1UnusedPieces, P2UnusedPieces);
+        game(NewBoard, o, NewP1UnusedPieces, P2UnusedPieces, NewDropInitiative)
+        ).
+
+game(Board, o, P1UnusedPieces, P2UnusedPieces, DropInitiative) :- 
+        showBoard(Board, P1UnusedPieces, P2UnusedPieces, DropInitiative), !,
+        userTurn(o, Board , NewBoard, P2UnusedPieces, NewP2UnusedPieces, DropInitiative, NewDropInitiative),
+        (gameOver(NewBoard, NewP2UnusedPieces, P2UnusedPieces) ->
+                printWinner(Board, P1UnusedPieces, P2UnusedPieces);
+        game(NewBoard, x, P1UnusedPieces, NewP2UnusedPieces, NewDropInitiative)
+        ).
 
 inputPosition(Row, Column):-
         getRow(Row),
@@ -127,22 +155,39 @@ validAttack(Player, Row, Column, NewRow, NewColumn, EnemyRow, EnemyColumn, Board
         Enemy \= Player, Enemy \= b,
         EnemyRow is Row, EnemyColumn is Column+1.
 
-userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces) :- 
+userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative) :- 
         print('Select position (ex: 3c, 1b..)'), nl, print('> '),
         inputPosition(Row, Column),
         (     % if
-                empty(Row, Column, Board) -> 
-                       dropPiece(Player, Row, Column, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces);
+                (empty(Row, Column, Board), PlayerUnusedPieces > 0) -> 
+                       dropPiece(Player, Row, Column, Board, NewBoard),
+                       PlayerNewUnusedPieces is PlayerUnusedPieces-1,
+                       NewDropInitiative = DropInitiative;
               % else if
-                isOccupiedBy(Player, Row, Column, Board) ->
+                (isOccupiedBy(Player, Row, Column, Board), DropInitiative == Player) ->
                        movePiece(Player, Row, Column, Board, NewBoard),
-                       PlayerNewUnusedPieces is PlayerUnusedPieces;
+                       PlayerNewUnusedPieces is PlayerUnusedPieces,
+                       versus(Player, Opponent),     % if a player moves, the drop
+                       NewDropInitiative = Opponent; % initiative goes to the opponent
               % else
                 print('Invalid selection!'), nl,
-                userTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces)
+                userTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
         ).
         
+
+dropPiece(Player, 1, 1, [b|Tail], [Player|Tail]).
+
+dropPiece(Player, 1, Column, [H | TBoard], [H | TNewBoard]) :-
+        NextCol is Column-1,
+        NextCol > 0,
+        dropPiece(Player, 1, NextCol, TBoard, TNewBoard).
+
+dropPiece(Player, Row, Column, [A,B,C,D,E | TBoard], [A,B,C,D,E | TNewBoard]) :- 
+        NextRow is Row-1,
+        NextRow > 0,
+        dropPiece(Player, NextRow, Column, TBoard, TNewBoard).
         
+
 removePiece(1, 1, [_|Tail], [b|Tail]).
 
 removePiece(1, Column, [H | TBoard], [H | TNewBoard]):-
@@ -154,6 +199,7 @@ removePiece(Row, Column, [A,B,C,D,E | TBoard], [A,B,C,D,E | TNewBoard]) :-
         NextRow is Row-1,
         NextRow > 0,
         removePiece(NextRow, Column, TBoard, TNewBoard).
+
 
 inputSecondAttack(Enemy, Board, EnemyRow, EnemyColumn):-
         print('Select second enemy to be removed (ex: 1a, 5e...)'), nl, print('> '),
@@ -170,15 +216,17 @@ movePiece(Player, Row, Column, Board, NewBoard):-
         (      % if 
                 validMove(Row, Column, NewRow, NewColumn, Board) ->
                         removePiece(Row, Column, Board, TempBoard),
-                        dropPiece(Player, NewRow, NewColumn, TempBoard, NewBoard, _, _);
+                        dropPiece(Player, NewRow, NewColumn, TempBoard, NewBoard);
                % else if 
                 validAttack(Player, Row, Column, NewRow, NewColumn, EnemyRow, EnemyColumn, Board) ->
                         removePiece(Row, Column, Board, TempBoard1),
                         isOccupiedBy(Enemy, EnemyRow, EnemyColumn, Board),  % identify the enemy pieces
                         removePiece(EnemyRow, EnemyColumn, TempBoard1, TempBoard2),
-                        dropPiece(Player, NewRow, NewColumn, TempBoard2, TempBoard3, _, _),
+                        dropPiece(Player, NewRow, NewColumn, TempBoard2, TempBoard3),
+                        print('You have captured an enemy piece!'), nl,
                         (     % if
                                 count(Enemy, TempBoard3, Number), Number > 0 ->
+                                        showBoard(TempBoard3, 0, 0), !,
                                         inputSecondAttack(Enemy, TempBoard3, SecondEnemyRow, SecondEnemyColumn),
                                         removePiece(SecondEnemyRow, SecondEnemyColumn, TempBoard3, NewBoard);
                               % else
@@ -189,17 +237,4 @@ movePiece(Player, Row, Column, Board, NewBoard):-
                 print('Invalid move or attack!'), nl,
                 movePiece(Player, Row, Column, Board, NewBoard)
         ).
-        
-
-dropPiece(Player, 1, 1, [b|Tail], [Player|Tail], UnusedPieces, UnusedPieces-1).
-
-dropPiece(Player, 1, Column, [H | TBoard], [H | TNewBoard], UnusedPieces, NewUnusedPieces) :-
-        NextCol is Column-1,
-        NextCol > 0,
-        dropPiece(Player, 1, NextCol, TBoard, TNewBoard, UnusedPieces, NewUnusedPieces).
-
-dropPiece(Player, Row, Column, [A,B,C,D,E | TBoard], [A,B,C,D,E | TNewBoard], UnusedPieces, NewUnusedPieces) :- 
-        NextRow is Row-1,
-        NextRow > 0,
-        dropPiece(Player, NextRow, Column, TBoard, TNewBoard, UnusedPieces, NewUnusedPieces).
         
