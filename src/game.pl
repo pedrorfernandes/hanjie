@@ -31,7 +31,7 @@ showRow([], 6, P1UnusedPieces, _):-
 
 showRow([A,B,C,D,E | Tail], N, P1UnusedPieces, P2UnusedPieces) :-
         print(' |-----------------------|'), nl,
-        print(' | '), print(N), print('||'),      % row number
+        print(' | '), print(N), print(' |'),      % row number
         printPiece(A), printPiece(B), printPiece(C), printPiece(D), printPiece(E), nl,
         N2 is N+1,
         showRow(Tail, N2, P1UnusedPieces, P2UnusedPieces).
@@ -67,34 +67,44 @@ versus(o, x).
 
 % GAME FUNCTIONS
 
-choko:-  game([b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b], x, 2, 2, x).
+choko:-  game([b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b], x, 12, 12, x).
 
-gameOver(Board, P1UnusedPieces, P2UnusedPieces):-
+gameOver(Board, P1UnusedPieces, P2UnusedPieces, Winner):-
         count(x, Board, Nx),
         count(o, Board, No),
-        (Nx > 0, P1UnusedPieces > 0; No > 0, P2UnusedPieces > 0 ) ->
-                fail.
+        (
+           Nx =:= 0, P1UnusedPieces =:= 0, Winner = o; 
+           No =:= 0, P2UnusedPieces =:= 0, Winner = x
+        ).
 
-printWinner(Board, P1UnusedPieces, P2UnusedPieces):-
-        print('cenas').
+printWinner(Winner, Board):-
+        showBoard(Board, 0, 0, _),
+        print('****************************************'), nl, print('*  '),
+        print('Player '), print(Winner), print(' is victorious! Game Over.  *'), nl,
+        print('****************************************'), nl.
 
-% TODO detect game over is work in progress
+
 game(Board, x, P1UnusedPieces, P2UnusedPieces, DropInitiative) :- 
         showBoard(Board, P1UnusedPieces, P2UnusedPieces, DropInitiative), !,
                                 % cut will terminate game if the next input fails
         userTurn(x, Board , NewBoard, P1UnusedPieces, NewP1UnusedPieces, DropInitiative, NewDropInitiative),
-        (gameOver(NewBoard, NewP1UnusedPieces, P2UnusedPieces) ->
-                printWinner(Board, P1UnusedPieces, P2UnusedPieces);
-        game(NewBoard, o, NewP1UnusedPieces, P2UnusedPieces, NewDropInitiative)
+        ( % if
+           gameOver(NewBoard, NewP1UnusedPieces, P2UnusedPieces, Winner) ->
+                printWinner(Winner, NewBoard);
+          % else  
+           game(NewBoard, o, NewP1UnusedPieces, P2UnusedPieces, NewDropInitiative)
         ).
-
+        
 game(Board, o, P1UnusedPieces, P2UnusedPieces, DropInitiative) :- 
         showBoard(Board, P1UnusedPieces, P2UnusedPieces, DropInitiative), !,
         userTurn(o, Board , NewBoard, P2UnusedPieces, NewP2UnusedPieces, DropInitiative, NewDropInitiative),
-        (gameOver(NewBoard, NewP2UnusedPieces, P2UnusedPieces) ->
-                printWinner(Board, P1UnusedPieces, P2UnusedPieces);
-        game(NewBoard, x, P1UnusedPieces, NewP2UnusedPieces, NewDropInitiative)
+        ( % if 
+           gameOver(NewBoard, NewP2UnusedPieces, P2UnusedPieces, Winner) ->
+                printWinner(Winner, NewBoard);
+          % else 
+           game(NewBoard, x, P1UnusedPieces, NewP2UnusedPieces, NewDropInitiative)
         ).
+        
 
 inputPosition(Row, Column):-
         getRow(Row),
