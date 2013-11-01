@@ -95,7 +95,11 @@ convert(Position, Row, Column):-
 
 % GAME FUNCTIONS
 
-choko:-  game([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25], x, 12, 12, x).
+choko:-  game([ 1, 2, 3, 4, 5,
+                6, 7, 8, 9,10,
+               11,12,13,14,15,
+               16,17,18,19,20,
+               21,22,23,24,25], x, 12, 12, x).
 
 /*
         An Example Board that shows the
@@ -336,9 +340,9 @@ staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
 
 
 minimax(Board, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
-  ( Depth = 0 ->
-    ( staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Val)
-    ) ;
+  ( (Depth = 0 ; gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, _Winner) ) ->
+    staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Val) 
+    ;
     ( 
       getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative), !,
       OneDeeper is Depth - 1,
