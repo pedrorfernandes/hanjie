@@ -1,4 +1,4 @@
-:- use_module(library(lists), [nth1/3, same_length/2]).
+:- use_module(library(lists), [nth1/3]).
 :- use_module(library(random), [random_member/2]).
 
 % PRINTING FUNCTIONS
@@ -146,6 +146,7 @@ game(Board, x, P1UnusedPieces, P2UnusedPieces, DropInitiative) :-
         staticval(x, Board, P1UnusedPieces, P2UnusedPieces, Value), print('value is '), print(Value), nl,
         getAllMoves(x, Board, Moves, P1UnusedPieces, DropInitiative), print(Moves), nl,
         userTurn(x, Board , NewBoard, P1UnusedPieces, NewP1UnusedPieces, DropInitiative, NewDropInitiative),
+        %computerTurn(x, Board , NewBoard, P1UnusedPieces, NewP1UnusedPieces, P2UnusedPieces, DropInitiative, NewDropInitiative, hard),
         ( % if
            gameOver(x, NewBoard, NewP1UnusedPieces, P2UnusedPieces, Winner) ->
                 printWinner(Winner, NewBoard);
@@ -292,9 +293,18 @@ computerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces
 
 computerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, hard) :-
         minimax(Board, BestMove, _Val, 3, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
+        %alphabeta(Board, 0, 10, BestMove, _Val, 4, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
         print('Choosen '), print(BestMove), nl,
         movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
-        
+
+getAllAttacks(Player, Board, Attacks):-
+         findall(Position, (isBoardPosition(Position), isOccupiedBy(Player, Position, Board)), Positions),
+                    findall(Position-Attack-SecondAttack, (isBoardPosition(Attack), 
+                                                            member(Position, Positions), 
+                                                            isSecondAttack(SecondAttack), 
+                                                            validAttack(Player, Position, Attack, _, SecondAttack, Board) 
+                                                          ), Attacks).
+
 getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) :-   
     (   % if
             PlayerUnusedPieces > 0 ->  % player can drop
@@ -335,8 +345,8 @@ staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
         versus(Player, Enemy),
         count(Enemy, Board, EnemyCount),
         PiecesVal is PlayerCount - EnemyCount,
+        %getAllAttacks(Player, Board, Attacks), length(Attacks, NumberOfAttacks),
         Value is UnusedPiecesVal + PiecesVal.
-
 
 
 minimax(Board, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
@@ -384,6 +394,47 @@ min_to_move(Depth) :-
 
 odd(X) :- X mod 2 =:= 1.
 even(X) :- \+ odd(X).
+
+
+alphabeta(Board, Alpha, Beta, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
+  ( (Depth = 0 ; gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, _Winner) ) ->
+    staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Val) 
+    ;
+    ( 
+      getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative), !,
+      OneDeeper is Depth - 1,
+      boundedbest(Moves, Alpha, Beta, BestMove, Val, OneDeeper, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative)
+    )
+  ).
+
+boundedbest([Move|Moves], Alpha, Beta, GoodMove, GoodVal, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
+  movePiece(Player, Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative),
+  versus(Player, Enemy),
+  alphabeta(NewBoard, Alpha, Beta, _, Val, Depth, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative),
+  goodenough(Moves, Alpha, Beta, Move, Val, GoodMove, GoodVal, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative).
+
+goodenough([], _, _, Move, Val, Move, Val, _Depth, _Board, _Player, _PlayerUnusedPieces, _EnemyUnusedPieces, _DropInitiative) :- !.
+
+goodenough(_, Alpha, Beta, Move, Val, Move, Val, Depth, _Board, _Player, _PlayerUnusedPieces, _EnemyUnusedPieces, _DropInitiative) :-
+  min_to_move(Depth), Val > Beta, !
+  ;
+  max_to_move(Depth), Val < Alpha, !.
+
+goodenough(Moves, Alpha, Beta, Move, Val, GoodMove, GoodVal, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
+  newbounds(Alpha, Beta, Depth, Val, NewAlpha, NewBeta),
+  boundedbest(Moves, NewAlpha, NewBeta, Move1, Val1, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
+  betterof(Move, Val, Move1, Val1, GoodMove, GoodVal, Depth).
+
+newbounds(Alpha, Beta, Depth, Val, Val, Beta) :-
+  min_to_move(Depth), Val > Alpha,!.
+
+newbounds(Alpha, Beta, Depth, Val, Alpha, Val) :-
+  max_to_move(Depth), Val < Beta, !.
+
+newbounds(Alpha, Beta, _, _, Alpha, Beta).
+
+
+
 
 
 
