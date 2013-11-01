@@ -1,4 +1,4 @@
-:- use_module(library(lists), [nth1/3]).
+:- use_module(library(lists), [nth1/3, same_length/2]).
 :- use_module(library(random), [random_member/2]).
 
 % PRINTING FUNCTIONS
@@ -114,9 +114,16 @@ choko:-  game([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25
  \-----------------------/ 
 */
 
-gameOver(Board, P1UnusedPieces, P2UnusedPieces, Winner):-
+gameOver(Player, Board, PlayerUnusedPieces, OpponentUnusedPieces, Winner):-
         count(x, Board, Nx),
         count(o, Board, No),
+        (
+           Player == x ->
+                P1UnusedPieces is PlayerUnusedPieces,
+                P2UnusedPieces is OpponentUnusedPieces;
+           P1UnusedPieces is OpponentUnusedPieces,
+           P2UnusedPieces is PlayerUnusedPieces
+        ),
         (
            Nx =:= 0, P1UnusedPieces =:= 0, Winner = o; 
            No =:= 0, P2UnusedPieces =:= 0, Winner = x
@@ -132,21 +139,24 @@ printWinner(Winner, Board):-
 game(Board, x, P1UnusedPieces, P2UnusedPieces, DropInitiative) :- 
         showBoard(Board, P1UnusedPieces, P2UnusedPieces, DropInitiative), !,
                                 % cut will terminate game if the next input fails
+        staticval(x, Board, P1UnusedPieces, P2UnusedPieces, Value), print('value is '), print(Value), nl,
         getAllMoves(x, Board, Moves, P1UnusedPieces, DropInitiative), print(Moves), nl,
         userTurn(x, Board , NewBoard, P1UnusedPieces, NewP1UnusedPieces, DropInitiative, NewDropInitiative),
         ( % if
-           gameOver(NewBoard, NewP1UnusedPieces, P2UnusedPieces, Winner) ->
+           gameOver(x, NewBoard, NewP1UnusedPieces, P2UnusedPieces, Winner) ->
                 printWinner(Winner, NewBoard);
           % else  
            game(NewBoard, o, NewP1UnusedPieces, P2UnusedPieces, NewDropInitiative)
         ).
+
         
 game(Board, o, P1UnusedPieces, P2UnusedPieces, DropInitiative) :- 
         showBoard(Board, P1UnusedPieces, P2UnusedPieces, DropInitiative), !,
+        staticval(o, Board, P2UnusedPieces, P1UnusedPieces, Value), print('value is '), print(Value), nl,
         getAllMoves(o, Board, Moves, P2UnusedPieces, DropInitiative), print(Moves), nl,
-        computerTurn(o, Board , NewBoard, P2UnusedPieces, NewP2UnusedPieces, DropInitiative, NewDropInitiative, easy),
+        computerTurn(o, Board , NewBoard, P2UnusedPieces, NewP2UnusedPieces, P1UnusedPieces, DropInitiative, NewDropInitiative, hard),
         ( % if
-           gameOver(NewBoard, NewP2UnusedPieces, P2UnusedPieces, Winner) ->
+           gameOver(o, NewBoard, NewP2UnusedPieces, P1UnusedPieces, Winner) ->
                 printWinner(Winner, NewBoard);
           % else 
            game(NewBoard, x, P1UnusedPieces, NewP2UnusedPieces, NewDropInitiative)
@@ -166,6 +176,8 @@ getColumn(Column) :-
 getRow(Row) :-
         get_code(Code),
         Row is Code - 48.
+
+emptyList([]).
 
 notEmpty(Piece):-
         Piece == x; Piece == o.
@@ -268,14 +280,18 @@ userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, Dr
                 userTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
         ).
 
-computerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative, easy) :-
+computerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, easy) :-
         getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative),
         random_member(RandomMove, Moves),
         print('Choosen '), print(RandomMove), nl,
         movePiece(Player, RandomMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
+
+computerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, hard) :-
+        minimax(Board, BestMove, _Val, 3, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
+        print('Choosen '), print(BestMove), nl,
+        movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
         
-        
-getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) :-
+getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) :-   
     (   % if
             PlayerUnusedPieces > 0 ->  % player can drop
                 findall(Position, (isBoardPosition(Position), empty(Position, Board)), EmptyPositions),
@@ -294,10 +310,78 @@ getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) :-
                                                             isSecondAttack(SecondAttack), 
                                                             validAttack(Player, Position, Attack, _, SecondAttack, Board) 
                                                           ), Attacks),
-                    append(DropsAndMovements, Attacks, Moves);
+                    append(DropsAndMovements, Attacks, Moves),
+                    ( emptyList(Moves)-> !, fail; true );   % if there aren't moves, this function must fail
                 % else    
-                    append(Drops, [], Moves)
+                    append(Drops, [], Moves),
+                    ( emptyList(Moves)-> !, fail; true )
     ).
+
+staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
+        gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Winner),
+         (
+                Winner == Player,
+                Value is  1000
+                ;
+                Value is -1000
+         )
+        ;
+        UnusedPiecesVal is PlayerUnusedPieces - EnemyUnusedPieces,
+        count(Player, Board, PlayerCount),
+        versus(Player, Enemy),
+        count(Enemy, Board, EnemyCount),
+        PiecesVal is PlayerCount - EnemyCount,
+        Value is UnusedPiecesVal + PiecesVal.
+
+
+
+minimax(Board, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
+  ( Depth = 0 ->
+    ( staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Val)
+    ) ;
+    ( 
+      getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative), !,
+      OneDeeper is Depth - 1,
+      best(Moves, BestMove, Val, OneDeeper, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative)
+    )
+  ).
+
+best( [ Move], Move, Val, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
+  % minimax(Board, _, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),!.
+  movePiece(Player, Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative),
+  versus(Player, Enemy),
+  minimax(NewBoard, _, Val, Depth, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative),!.
+
+best([Move1|Moves], BestMove, BestVal, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
+  movePiece(Player, Move1, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative),
+  versus(Player, Enemy),
+  minimax(NewBoard, _, Val1, Depth, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative),
+  best(Moves, Move2, Val2, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
+  betterof(Move1, Val1, Move2, Val2, BestMove, BestVal, Depth).
+
+
+   %  The next predicates are used by both minimax and alphabeta
+
+
+betterof(Move0, Val0, _Move1, Val1, Move0, Val0, Depth) :-
+  min_to_move(Depth), Val0 > Val1, !
+  ;
+  max_to_move(Depth), Val0 < Val1, !.
+
+betterof(_Move0, _Val0, Pos1, Val1, Pos1, Val1, _Depth).
+
+%      It is max's move when the search depth is even.
+max_to_move(Depth) :- 
+  even(Depth).
+
+%      It is min's move when max is not to move
+min_to_move(Depth) :-
+  \+ max_to_move(Depth).
+
+odd(X) :- X mod 2 =:= 1.
+even(X) :- \+ odd(X).
+
+
 
 movePiece(Player, Position-Attack-SecondAttack, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative):-
         DropInitiative == Player,
@@ -309,10 +393,10 @@ movePiece(Player, Position-Attack-SecondAttack, Board, NewBoard, PlayerUnusedPie
                 isOccupiedBy(Enemy, EnemyRow, EnemyColumn, Board),  % identify the enemy pieces
                 removePiece(EnemyRow, EnemyColumn, TempBoard1, TempBoard2),
                 dropPiece(Player, NewRow, NewColumn, TempBoard2, TempBoard3),
-                print('Enemy captured a piece!'), nl,
+                % print('Enemy captured a piece!'), nl,
                 (     % if
                          count(Enemy, TempBoard3, Number), Number > 0 ->
-                               showBoard(TempBoard3, 0, 0), !,
+                               % showBoard(TempBoard3, 0, 0), !,
                                removePiece(SecondEnemyRow, SecondEnemyColumn, TempBoard3, NewBoard);
                       % else
                        copy(TempBoard3, NewBoard)
