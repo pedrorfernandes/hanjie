@@ -1,5 +1,5 @@
 :- use_module(library(lists), [nth1/3]).
-:- use_module(library(random), [random_member/2]).
+:- use_module(library(random), [random_member/2, random_permutation/2]).
 
 % PRINTING FUNCTIONS
 
@@ -305,7 +305,7 @@ getAllAttacks(Player, Board, Attacks):-
                                                             validAttack(Player, Position, Attack, _, SecondAttack, Board) 
                                                           ), Attacks).
 
-getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) :-   
+getAllMoves(Player, Board, ShuffledMoves, PlayerUnusedPieces, DropInitiative) :-   
     (   % if
             PlayerUnusedPieces > 0 ->  % player can drop
                 findall(Position, (isBoardPosition(Position), empty(Position, Board)), EmptyPositions),
@@ -324,12 +324,11 @@ getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) :-
                                                             isSecondAttack(SecondAttack), 
                                                             validAttack(Player, Position, Attack, _, SecondAttack, Board) 
                                                           ), Attacks),
-                    append(DropsAndMovements, Attacks, Moves),
-                    ( emptyList(Moves)-> !, fail; true );   % if there aren't moves, this function must fail
+                    append(DropsAndMovements, Attacks, Moves);
                 % else    
-                    append(Drops, [], Moves),
-                    ( emptyList(Moves)-> !, fail; true )
-    ).
+                    append(Drops, [], Moves)
+    ),
+    random_permutation(Moves, ShuffledMoves). % this will add randomness to the minimax
 
 staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
         gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Winner),
@@ -350,7 +349,7 @@ staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
 
 
 minimax(Board, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
-  ( (Depth = 0 ; gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, _Winner) ) ->
+  ( (Depth =:= 0 ; gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, _Winner) ) ->
     staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Val) 
     ;
     ( 
@@ -394,48 +393,6 @@ min_to_move(Depth) :-
 
 odd(X) :- X mod 2 =:= 1.
 even(X) :- \+ odd(X).
-
-
-alphabeta(Board, Alpha, Beta, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
-  ( (Depth = 0 ; gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, _Winner) ) ->
-    staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Val) 
-    ;
-    ( 
-      getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative), !,
-      OneDeeper is Depth - 1,
-      boundedbest(Moves, Alpha, Beta, BestMove, Val, OneDeeper, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative)
-    )
-  ).
-
-boundedbest([Move|Moves], Alpha, Beta, GoodMove, GoodVal, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
-  movePiece(Player, Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative),
-  versus(Player, Enemy),
-  alphabeta(NewBoard, Alpha, Beta, _, Val, Depth, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative),
-  goodenough(Moves, Alpha, Beta, Move, Val, GoodMove, GoodVal, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative).
-
-goodenough([], _, _, Move, Val, Move, Val, _Depth, _Board, _Player, _PlayerUnusedPieces, _EnemyUnusedPieces, _DropInitiative) :- !.
-
-goodenough(_, Alpha, Beta, Move, Val, Move, Val, Depth, _Board, _Player, _PlayerUnusedPieces, _EnemyUnusedPieces, _DropInitiative) :-
-  min_to_move(Depth), Val > Beta, !
-  ;
-  max_to_move(Depth), Val < Alpha, !.
-
-goodenough(Moves, Alpha, Beta, Move, Val, GoodMove, GoodVal, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
-  newbounds(Alpha, Beta, Depth, Val, NewAlpha, NewBeta),
-  boundedbest(Moves, NewAlpha, NewBeta, Move1, Val1, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
-  betterof(Move, Val, Move1, Val1, GoodMove, GoodVal, Depth).
-
-newbounds(Alpha, Beta, Depth, Val, Val, Beta) :-
-  min_to_move(Depth), Val > Alpha,!.
-
-newbounds(Alpha, Beta, Depth, Val, Alpha, Val) :-
-  max_to_move(Depth), Val < Beta, !.
-
-newbounds(Alpha, Beta, _, _, Alpha, Beta).
-
-
-
-
 
 
 movePiece(Player, Position-Attack-SecondAttack, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative):-
