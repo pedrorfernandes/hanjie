@@ -13,6 +13,10 @@ showPieces(Player, NumPieces):-
         NextNumPieces is NumPieces-1,
         showPieces(Player, NextNumPieces).
 
+showBoard(Player, Board, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative):-
+        orderUnusedPieces(Player, PlayerUnusedPieces, OpponentUnusedPieces, P1UnusedPieces, P2UnusedPieces),
+        showBoard(Board, P1UnusedPieces, P2UnusedPieces, DropInitiative).
+
 showBoard(B, P1UnusedPieces, P2UnusedPieces) :-
         showPieces(o, P2UnusedPieces), nl, nl,
         print('     /-------------------\\'), nl,
@@ -78,7 +82,7 @@ isSecondAttack(P):-
     member(P, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]).
 
 % converts a board position to a row and column
-% TODO is there a formula that can validate these cases?
+% special cases that won't work with formula
 convert(5,  1, 5):- !.
 convert(10, 2, 5):- !.
 convert(15, 3, 5):- !.
@@ -99,7 +103,7 @@ choko:-  game([ 1, 2, 3, 4, 5,
                 6, 7, 8, 9,10,
                11,12,13,14,15,
                16,17,18,19,20,
-               21,22,23,24,25], x, 12, 12, x).
+               21,22,23,24,25], x, 12, 12, x, human, computer, _, hard).
 
 /*
         An Example Board that shows the
@@ -118,16 +122,17 @@ choko:-  game([ 1, 2, 3, 4, 5,
  \-----------------------/ 
 */
 
+orderUnusedPieces(Player, PlayerUnusedPieces, OpponentUnusedPieces, P1UnusedPieces, P2UnusedPieces):-
+        Player == x ->
+             P1UnusedPieces is PlayerUnusedPieces,
+             P2UnusedPieces is OpponentUnusedPieces;
+        P1UnusedPieces is OpponentUnusedPieces,
+        P2UnusedPieces is PlayerUnusedPieces.
+
 gameOver(Player, Board, PlayerUnusedPieces, OpponentUnusedPieces, Winner):-
         count(x, Board, Nx),
         count(o, Board, No),
-        (
-           Player == x ->
-                P1UnusedPieces is PlayerUnusedPieces,
-                P2UnusedPieces is OpponentUnusedPieces;
-           P1UnusedPieces is OpponentUnusedPieces,
-           P2UnusedPieces is PlayerUnusedPieces
-        ),
+        orderUnusedPieces(Player, PlayerUnusedPieces, OpponentUnusedPieces, P1UnusedPieces, P2UnusedPieces),
         (
            Nx =:= 0, P1UnusedPieces =:= 0, Winner = o; 
            No =:= 0, P2UnusedPieces =:= 0, Winner = x
@@ -139,32 +144,15 @@ printWinner(Winner, Board):-
         print('Player '), print(Winner), print(' is victorious! Game Over.  *'), nl,
         print('****************************************'), nl.
 
-
-game(Board, x, P1UnusedPieces, P2UnusedPieces, DropInitiative) :- 
-        showBoard(Board, P1UnusedPieces, P2UnusedPieces, DropInitiative), !,
-                                % cut will terminate game if the next input fails
-        staticval(x, Board, P1UnusedPieces, P2UnusedPieces, Value), print('value is '), print(Value), nl,
-        getAllMoves(x, Board, Moves, P1UnusedPieces, DropInitiative), print(Moves), nl,
-        userTurn(x, Board , NewBoard, P1UnusedPieces, NewP1UnusedPieces, DropInitiative, NewDropInitiative),
-        %computerTurn(x, Board , NewBoard, P1UnusedPieces, NewP1UnusedPieces, P2UnusedPieces, DropInitiative, NewDropInitiative, hard),
+game(Board, Player, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative, PlayerType, OpponentType, PlayerDifficulty, OpponentDifficulty) :- 
+        showBoard(Player, Board, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative), !,
+        playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, OpponentUnusedPieces, DropInitiative, NewDropInitiative, PlayerType, PlayerDifficulty),
         ( % if
-           gameOver(x, NewBoard, NewP1UnusedPieces, P2UnusedPieces, Winner) ->
-                printWinner(Winner, NewBoard);
-          % else  
-           game(NewBoard, o, NewP1UnusedPieces, P2UnusedPieces, NewDropInitiative)
-        ).
-
-        
-game(Board, o, P1UnusedPieces, P2UnusedPieces, DropInitiative) :- 
-        showBoard(Board, P1UnusedPieces, P2UnusedPieces, DropInitiative), !,
-        staticval(o, Board, P2UnusedPieces, P1UnusedPieces, Value), print('value is '), print(Value), nl,
-        getAllMoves(o, Board, Moves, P2UnusedPieces, DropInitiative), print(Moves), nl,
-        computerTurn(o, Board , NewBoard, P2UnusedPieces, NewP2UnusedPieces, P1UnusedPieces, DropInitiative, NewDropInitiative, hard),
-        ( % if
-           gameOver(o, NewBoard, NewP2UnusedPieces, P1UnusedPieces, Winner) ->
+           gameOver(Player, NewBoard, PlayerNewUnusedPieces, OpponentUnusedPieces, Winner) ->
                 printWinner(Winner, NewBoard);
           % else 
-           game(NewBoard, x, P1UnusedPieces, NewP2UnusedPieces, NewDropInitiative)
+           versus(Player, Opponent),
+           game(NewBoard, Opponent, OpponentUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative, OpponentType, PlayerType, OpponentDifficulty, PlayerDifficulty)
         ).
 
 inputPosition(Row, Column):-
@@ -266,7 +254,7 @@ validAttack(Player, Row, Column, NewRow, NewColumn, EnemyRow, EnemyColumn, Board
         Enemy \= Player, notEmpty(Enemy),
         EnemyRow is Row, EnemyColumn is Column+1.
 
-userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative) :- 
+playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _, DropInitiative, NewDropInitiative, human, _) :- 
         print('Select position (ex: 3c, 1b..)'), nl, print('> '),
         inputPosition(Row, Column),
         (     % if
@@ -282,18 +270,17 @@ userTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, Dr
                        NewDropInitiative = Opponent; % initiative goes to the opponent
               % else
                 print('Invalid selection!'), nl,
-                userTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
+                playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _, DropInitiative, NewDropInitiative, human, _)
         ).
 
-computerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, easy) :-
+playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, easy) :-
         getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative),
         random_member(RandomMove, Moves),
         print('Choosen '), print(RandomMove), nl,
         movePiece(Player, RandomMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
-computerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, hard) :-
+playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, hard) :-
         minimax(Board, BestMove, _Val, 3, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
-        %alphabeta(Board, 0, 10, BestMove, _Val, 4, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
         print('Choosen '), print(BestMove), nl,
         movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
@@ -360,7 +347,6 @@ minimax(Board, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPiec
   ).
 
 best( [ Move], Move, Val, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
-  % minimax(Board, _, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),!.
   movePiece(Player, Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative),
   versus(Player, Enemy),
   minimax(NewBoard, _, Val, Depth, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative),!.
