@@ -85,8 +85,9 @@ printMove(Position-Attack-SecondAttack):-
 nth1(1,[H | _], H) :- !.
 
 nth1(X,[_ | T], Nth) :- 
-        NextX is X-1, 
-        nth1(NextX, T, Nth). 
+        NextX is X-1,
+        NextX > 0,
+        nth1(NextX, T, Nth).
 
 count(_, [], 0).
 
@@ -142,11 +143,14 @@ printPlayer(PlayerType, PlayerDifficulty):-
         print(' '),
         print(PlayerDifficulty);
         true.
-                
-printHelp:-
-        print('This game is easy, you can figure it out.'), nl,
+               
+pressEnter:-
         print('Press enter to continue'), nl,
         skip_line.
+
+printHelp:-
+        print('This game is easy, you can figure it out.'), nl,
+        pressEnter.
 
 getOption(Option):-
         print('> '),
@@ -223,14 +227,14 @@ choko:-  game([ 1, 2, 3, 4, 5,
                 6, 7, 8, 9,10,
                11,12,13,14,15,
                16,17,18,19,20,
-               21,22,23,24,25], x, 12, 12, x, computer, medium, computer, medium).
+               21,22,23,24,25], x, 12, 12, x, computer, medium, computer, hard).
 
-% TODO somehow fix this situation?
+% a situation where player X has no moves
 test:-  game([  x, o, o, o, x,
                 o, 7, o, o, x,
                 x, o, o, o, x,
                 x, o, x, x, x,
-                x, o, o, x, x], x, 0, 0, x, computer, medium, computer, medium).
+                x, o, o, x, x], x, 0, 0, x, human, easy, computer, easy).
 
 /*
         An Example Board that shows the
@@ -394,6 +398,14 @@ validAttack(Player, Row, Column, NewRow, NewColumn, EnemyRow, EnemyColumn, Board
         Enemy \= Player, notEmpty(Enemy),
         EnemyRow is Row, EnemyColumn is Column+1.
 
+noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _DropInitiative, NewDropInitiative):-
+        print('No move is possible!! Skipping player '), print(Player), print(' turn.'), nl,
+        copy(Board, NewBoard),
+        PlayerNewUnusedPieces = PlayerUnusedPieces,
+        versus(Player, Enemy),
+        NewDropInitiative = Enemy,
+        pressEnter.
+
 inputSecondAttack(Enemy, Board, EnemyRow, EnemyColumn):-
         print('Select second enemy to be removed (ex: 1a, 5e...)'), nl, print('> '),
         inputPosition(Row, Column) ->
@@ -440,6 +452,9 @@ userMovePiece(Player, Row, Column, Board, NewBoard):-
         userMovePiece(Player, Row, Column, Board, NewBoard).
 
 playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, human, _) :- 
+        \+ getAllMoves(Player, Board, _Moves, PlayerUnusedPieces, DropInitiative) ->
+                noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
+        ;
         print('Select position (ex: 3c, 1b..)'), nl, print('> '), !,
         inputPosition(Row, Column) ->
         (     % if
@@ -464,23 +479,29 @@ playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, 
 
 % easy will choose a random position in the current board
 playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, easy) :-
-        getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative),
-        random_member(RandomMove, Moves),
-        printMove(RandomMove),
-        movePiece(Player, RandomMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
-
+        getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) ->
+                random_member(RandomMove, Moves),
+                printMove(RandomMove),
+                movePiece(Player, RandomMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
+        ;
+        noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
+        
 % medium will calculate the best move in the current board
 playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, medium) :-
-        getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative),
-        bestMove(Moves, BestMove, _Value, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
-        printMove(BestMove),
-        movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
+        getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) ->
+                bestMove(Moves, BestMove, _Value, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
+                printMove(BestMove),
+                movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative);
+        noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
 % hard will do a minimax, calculating the best move 3 steps ahead
 playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, hard) :-
         minimax(Board, BestMove, _Val, 3, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
-        printMove(BestMove),
-        movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
+        !, nonvar(BestMove) -> % check if minimax returned a best move successfully
+                printMove(BestMove),
+                movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
+        ;
+        noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
 bestMove([Move], Move, BestValue, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative):-
         movePiece(Player, Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, _NewDropInitiative),
@@ -529,7 +550,10 @@ getAllMoves(Player, Board, ShuffledMoves, PlayerUnusedPieces, DropInitiative) :-
                 % else    
                     append(Drops, [], Moves)
     ),
-    random_permutation(Moves, ShuffledMoves). % this will add randomness to the minimax
+    (length(Moves, NumberOfMoves), NumberOfMoves =:= 0 ->
+        fail
+    ;                                                  
+    random_permutation(Moves, ShuffledMoves)). % this will add randomness to the minimax
 
 executeAllMoves(Player, Board, Moves, NewBoardList, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative):-
         findall( NewBoard-PlayerNewUnusedPieces-EnemyUnusedPieces-NewDropInitiative,
@@ -566,6 +590,8 @@ minimax(Board, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPiec
       getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative), !,
       OneDeeper is Depth - 1,
       best(Moves, BestMove, Val, OneDeeper, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative)
+      ;
+      value(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, Val)
     )
   ).
 
