@@ -1,4 +1,3 @@
-:- use_module(library(lists), [nth1/3]).
 :- use_module(library(random), [random_member/2, random_permutation/2]).
 
 % PRINTING FUNCTIONS
@@ -46,15 +45,48 @@ showRow([A,B,C,D,E | Tail], N, P1UnusedPieces, P2UnusedPieces) :-
 printPiece(N):- number(N), print('   |').
 printPiece(X):- print(' '), print(X), print(' |').
 
+columnToLetter(1, a).
+columnToLetter(2, b).
+columnToLetter(3, c).
+columnToLetter(4, d).
+columnToLetter(5, e).
+
+printPosition(Position):-
+        convert(Position, Row, Column),
+        columnToLetter(Column, Letter),
+        print(Row), print(Letter).
+
+printMove(Drop):-
+        number(Drop), nl,
+        print('Computer dropped a piece in '),
+        printPosition(Drop), nl, nl.
+
+printMove(Position-Move):-
+        number(Position), number(Move), nl,
+        print('Computer moved '),
+        printPosition(Position),
+        print(' to '),
+        printPosition(Move), nl, nl.
+
+printMove(Position-Attack-SecondAttack):-
+        number(Position), number(Attack), number(SecondAttack), nl,
+        print('Computer attacked from '),
+        printPosition(Position),
+        print(' to '),
+        printPosition(Attack),
+        SecondAttack =\= 0 ->
+                print(' and has taken '),
+                printPosition(SecondAttack), nl, nl
+        ;
+        nl, nl.
+
 % UTILITY FUNCTIONS
 
-/* % using library definition
 nth1(1,[H | _], H) :- !.
 
 nth1(X,[_ | T], Nth) :- 
         NextX is X-1, 
         nth1(NextX, T, Nth). 
-*/
 
 count(_, [], 0).
 
@@ -66,9 +98,9 @@ count(X, [Y | T], N):-
         X \= Y,
         count(X, T, N).
 
-copy(L,R) :- accCp(L,R).
-accCp([],[]).
-accCp([H|T1],[H|T2]) :- accCp(T1,T2).
+copy(L,R) :- copyAux(L,R).
+copyAux([],[]).
+copyAux([H|T1],[H|T2]) :- copyAux(T1,T2).
 
 % this will return the opposing player
 versus(x, o).
@@ -98,13 +130,107 @@ convert(Position, Row, Column):-
         % got row and column, calculate position
         Position is Column + 5*(Row-1).
 
+printOptions:-
+        print('1 - How to Play'), nl,
+        print('2 - Select Player 1'), nl,
+        print('3 - Select Player 2'), nl,
+        print('4 - Start game'), nl.
+
+printPlayer(PlayerType, PlayerDifficulty):-
+        print(PlayerType),
+        PlayerType \== human ->
+        print(' '),
+        print(PlayerDifficulty);
+        true.
+                
+printHelp:-
+        print('This game is easy, you can figure it out.'), nl,
+        print('Press enter to continue'), nl,
+        skip_line.
+
+getOption(Option):-
+        print('> '),
+        get_code(Code),
+        CurrentOption is Code - 48, % '1' to 1
+        skip_line,
+        (
+           (CurrentOption < 1 ; CurrentOption > 4) ->
+                print('Invalid option! Please input a number between 1 and 4!'), nl,
+                getOption(Option)
+            ;
+            Option is CurrentOption
+        ).
+
+selectPlayer(NewPlayerType, NewPlayerDifficulty):-
+        print('Please select one of the following types of players'), nl,
+        print('1 - Human'), nl,
+        print('2 - Computer, easy'), nl,
+        print('3 - Computer, medium'), nl,
+        print('4 - Computer, hard'), nl,
+        getOption(Option),
+        ( Option =:= 1,
+          NewPlayerType = human,
+          NewPlayerDifficulty = irrelevant
+          ;
+          Option =:= 2,
+          NewPlayerType = computer,
+          NewPlayerDifficulty = easy
+          ;
+          Option =:= 3,
+          NewPlayerType = computer,
+          NewPlayerDifficulty = medium
+          ;
+          Option =:= 4,
+          NewPlayerType = computer,
+          NewPlayerDifficulty = hard
+        ).
+
+% default starting players
+newgame :- newgame(human, hard, computer, medium).
+        
+newgame(Player1Type, Player1Difficulty, Player2Type, Player2Difficulty):-
+        print('Welcome to choko!'), nl,
+        print('Player 1 - '), printPlayer(Player1Type, Player1Difficulty), print(' / '), 
+        print('Player 2 - '), printPlayer(Player2Type, Player2Difficulty), nl,
+        printOptions,
+        getOption(Option),
+        ( Option =:= 1,
+          printHelp,
+          newgame(Player1Type, Player1Difficulty, Player2Type, Player2Difficulty)
+          ;
+          Option =:= 2,
+          selectPlayer(NewPlayer1Type, NewPlayer1Difficulty),
+          newgame(NewPlayer1Type, NewPlayer1Difficulty, Player2Type, Player2Difficulty)
+          ;
+          Option =:= 3,
+          selectPlayer(NewPlayer2Type, NewPlayer2Difficulty),
+          newgame(Player1Type, Player1Difficulty, NewPlayer2Type, NewPlayer2Difficulty)
+          ;
+          Option =:= 4,
+          choko(Player1Type, Player1Difficulty, Player2Type, Player2Difficulty)
+        ).
+
 % GAME FUNCTIONS
+
+choko(Player1Type, Player1Difficulty, Player2Type , Player2Difficulty):-
+        game([  1, 2, 3, 4, 5,
+                6, 7, 8, 9,10,
+               11,12,13,14,15,
+               16,17,18,19,20,
+               21,22,23,24,25], x, 12, 12, x, Player1Type, Player1Difficulty, Player2Type, Player2Difficulty).
 
 choko:-  game([ 1, 2, 3, 4, 5,
                 6, 7, 8, 9,10,
                11,12,13,14,15,
                16,17,18,19,20,
-               21,22,23,24,25], x, 12, 12, x, human, computer, hard, medium).
+               21,22,23,24,25], x, 12, 12, x, computer, medium, computer, medium).
+
+% TODO somehow fix this situation?
+test:-  game([  x, o, o, o, x,
+                o, 7, o, o, x,
+                x, o, o, o, x,
+                x, o, x, x, x,
+                x, o, o, x, x], x, 0, 0, x, computer, medium, computer, medium).
 
 /*
         An Example Board that shows the
@@ -147,7 +273,7 @@ printWinner(Winner, Board):-
         print('Player '), print(Winner), print(' is victorious! Game Over.  *'), nl,
         print('****************************************'), nl.
 
-game(Board, Player, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative, PlayerType, OpponentType, PlayerDifficulty, OpponentDifficulty) :- 
+game(Board, Player, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative, PlayerType, PlayerDifficulty, OpponentType, OpponentDifficulty) :- 
         showBoard(Player, Board, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative), !,
         playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, OpponentUnusedPieces, DropInitiative, NewDropInitiative, PlayerType, PlayerDifficulty),
         ( % if
@@ -155,7 +281,7 @@ game(Board, Player, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative, Pl
                 printWinner(Winner, NewBoard);
           % else 
            versus(Player, Opponent),
-           game(NewBoard, Opponent, OpponentUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative, OpponentType, PlayerType, OpponentDifficulty, PlayerDifficulty)
+           game(NewBoard, Opponent, OpponentUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative, OpponentType, OpponentDifficulty, PlayerType, PlayerDifficulty)
         ).
 
 inputPosition(Row, Column):-
@@ -340,29 +466,29 @@ playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, 
 playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, easy) :-
         getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative),
         random_member(RandomMove, Moves),
-        print('Choosen '), print(RandomMove), nl,
+        printMove(RandomMove),
         movePiece(Player, RandomMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
 % medium will calculate the best move in the current board
 playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, medium) :-
         getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative),
-        bestMove(Moves, BestMove, Value, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
-        print('Choosen '), print(BestMove), print(' with value '), print(Value), nl,
+        bestMove(Moves, BestMove, _Value, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
+        printMove(BestMove),
         movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
 % hard will do a minimax, calculating the best move 3 steps ahead
 playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, hard) :-
         minimax(Board, BestMove, _Val, 3, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
-        print('Choosen '), print(BestMove), nl,
+        printMove(BestMove),
         movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
 bestMove([Move], Move, BestValue, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative):-
         movePiece(Player, Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, _NewDropInitiative),
-        staticval(Player, NewBoard, PlayerNewUnusedPieces, EnemyUnusedPieces, BestValue).
+        value(NewBoard, Player, PlayerNewUnusedPieces, EnemyUnusedPieces, BestValue).
 
 bestMove([Move1|Moves], BestMove, BestValue, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative):-
         movePiece(Player, Move1, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, _NewDropInitiative),
-        staticval(Player, NewBoard, PlayerNewUnusedPieces, EnemyUnusedPieces, Value1),
+        value(NewBoard, Player, PlayerNewUnusedPieces, EnemyUnusedPieces, Value1),
         bestMove(Moves, Move2, Value2, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
         betterOf(Move1, Value1, Move2, Value2, BestMove, BestValue).
         
@@ -413,7 +539,7 @@ executeAllMoves(Player, Board, Moves, NewBoardList, PlayerUnusedPieces, EnemyUnu
                  NewBoardList).
 
 
-staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
+value(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
         gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Winner),
          (
                 Winner == Player,
@@ -434,7 +560,7 @@ staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
 
 minimax(Board, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
   ( (Depth =:= 0 ; gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, _Winner) ) ->
-    staticval(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Val) 
+    value(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, Val) 
     ;
     ( 
       getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative), !,
