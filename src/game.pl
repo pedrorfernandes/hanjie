@@ -1,6 +1,8 @@
 :- use_module(library(random), [random_member/2, random_permutation/2]).
 
-% PRINTING FUNCTIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%    PRINTING FUNCTIONS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 showBoard([]).
 
@@ -80,7 +82,9 @@ printMove(Position-Attack-SecondAttack):-
         ;
         nl, nl.
 
-% UTILITY FUNCTIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%    UTILITY FUNCTIONS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 nth1(1,[H | _], H) :- !.
 
@@ -103,10 +107,22 @@ copy(L,R) :- copyAux(L,R).
 copyAux([],[]).
 copyAux([H|T1],[H|T2]) :- copyAux(T1,T2).
 
+emptyList([]).
+
 % this will return the opposing player
 versus(x, o).
 versus(o, x).
 
+% This function will determine whose unused pieces are from player 1 and from player 2
+orderUnusedPieces(Player, PlayerUnusedPieces, OpponentUnusedPieces, P1UnusedPieces, P2UnusedPieces):-
+        Player == x ->
+             P1UnusedPieces is PlayerUnusedPieces,
+             P2UnusedPieces is OpponentUnusedPieces
+        ;
+        P1UnusedPieces is OpponentUnusedPieces,
+        P2UnusedPieces is PlayerUnusedPieces.
+
+% board positions go from position 1 to 25
 isBoardPosition(P):-
     member(P, [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]).
 
@@ -131,6 +147,10 @@ convert(Position, Row, Column):-
         % got row and column, calculate position
         Position is Column + 5*(Row-1).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%    MENU FUNCTIONS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 printOptions:-
         print('1 - How to Play'), nl,
         print('2 - Select Player 1'), nl,
@@ -145,7 +165,7 @@ printPlayer(PlayerType, PlayerDifficulty):-
         true.
                
 pressEnter:-
-        print('Press enter to continue'), nl,
+        print('Press enter to continue'), nl, print('> '),
         skip_line.
 
 printHelp:-
@@ -189,7 +209,7 @@ selectPlayer(NewPlayerType, NewPlayerDifficulty):-
           NewPlayerDifficulty = hard
         ).
 
-% default starting players
+% This will start a newgame! Default starting players are human vs medium computer
 newgame :- newgame(human, hard, computer, medium).
         
 newgame(Player1Type, Player1Difficulty, Player2Type, Player2Difficulty):-
@@ -214,7 +234,9 @@ newgame(Player1Type, Player1Difficulty, Player2Type, Player2Difficulty):-
           choko(Player1Type, Player1Difficulty, Player2Type, Player2Difficulty)
         ).
 
-% GAME FUNCTIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%    GAME FUNCTIONS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 choko(Player1Type, Player1Difficulty, Player2Type , Player2Difficulty):-
         game([  1, 2, 3, 4, 5,
@@ -223,6 +245,7 @@ choko(Player1Type, Player1Difficulty, Player2Type , Player2Difficulty):-
                16,17,18,19,20,
                21,22,23,24,25], x, 12, 12, x, Player1Type, Player1Difficulty, Player2Type, Player2Difficulty).
 
+% a quick start to skip the menu 
 choko:-  game([ 1, 2, 3, 4, 5,
                 6, 7, 8, 9,10,
                11,12,13,14,15,
@@ -234,7 +257,7 @@ test:-  game([  x, o, o, o, x,
                 o, 7, o, o, x,
                 x, o, o, o, x,
                 x, o, x, x, x,
-                x, o, o, x, x], x, 0, 0, x, human, easy, computer, easy).
+                x, o, o, x, x], x, 0, 0, x, human, easy, computer, hard).
 
 /*
         An Example Board that shows the
@@ -253,14 +276,7 @@ test:-  game([  x, o, o, o, x,
  \-----------------------/ 
 */
 
-orderUnusedPieces(Player, PlayerUnusedPieces, OpponentUnusedPieces, P1UnusedPieces, P2UnusedPieces):-
-        Player == x ->
-             P1UnusedPieces is PlayerUnusedPieces,
-             P2UnusedPieces is OpponentUnusedPieces
-        ;
-        P1UnusedPieces is OpponentUnusedPieces,
-        P2UnusedPieces is PlayerUnusedPieces.
-
+% if game is over, this will succeed and return a winner
 gameOver(Player, Board, PlayerUnusedPieces, OpponentUnusedPieces, Winner):-
         count(x, Board, Nx),
         count(o, Board, No),
@@ -277,6 +293,7 @@ printWinner(Winner, Board):-
         print('Player '), print(Winner), print(' is victorious! Game Over.  *'), nl,
         print('****************************************'), nl.
 
+% the main game function prints board, calls the current player's turn, checks victory and calls the next turn with the opponent player
 game(Board, Player, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative, PlayerType, PlayerDifficulty, OpponentType, OpponentDifficulty) :- 
         showBoard(Player, Board, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative), !,
         playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, OpponentUnusedPieces, DropInitiative, NewDropInitiative, PlayerType, PlayerDifficulty),
@@ -288,27 +305,9 @@ game(Board, Player, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative, Pl
            game(NewBoard, Opponent, OpponentUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative, OpponentType, OpponentDifficulty, PlayerType, PlayerDifficulty)
         ).
 
-inputPosition(Row, Column):-
-        getRow(Row),
-        getColumn(Column),
-        skip_line,
-        ( Column > 5 -> fail; true),
-        ( Column < 1 -> fail; true),
-        ( Row > 5 -> fail; true),
-        ( Row < 1 -> fail; true).
-
-% 'a' to 1
-getColumn(Column) :-
-        get_code(Code),
-        Column is Code - 96.
-
-
-% '1' to 1
-getRow(Row) :-
-        get_code(Code),
-        Row is Code - 48.
-
-emptyList([]).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%    MOVEMENT VALIDATION FUNCTIONS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 notEmpty(Piece):-
         Piece == x; Piece == o.
@@ -352,6 +351,7 @@ validMove(Row, Column, NewRow, NewColumn, Board):-
         empty(NewRow, NewColumn, Board).
 
 % this will ignore the second attack
+% and check only if a simple attack is valid
 validAttack(Player, Position, NewPosition, Board):-
         convert(Position, Row, Column),
         convert(NewPosition, NewRow, NewColumn),
@@ -398,6 +398,12 @@ validAttack(Player, Row, Column, NewRow, NewColumn, EnemyRow, EnemyColumn, Board
         Enemy \= Player, notEmpty(Enemy),
         EnemyRow is Row, EnemyColumn is Column+1.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%    USER INPUT FUNCTIONS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% If no moves are possible, the player is prompted to aknowledge this, press enter and skip his turn
 noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _DropInitiative, NewDropInitiative):-
         print('No move is possible!! Skipping player '), print(Player), print(' turn.'), nl,
         copy(Board, NewBoard),
@@ -405,6 +411,26 @@ noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPiec
         versus(Player, Enemy),
         NewDropInitiative = Enemy,
         pressEnter.
+
+inputPosition(Row, Column):-
+        getRow(Row),
+        getColumn(Column),
+        skip_line,
+        ( Column > 5 -> fail; true),
+        ( Column < 1 -> fail; true),
+        ( Row > 5 -> fail; true),
+        ( Row < 1 -> fail; true).
+
+% 'a' to 1
+getColumn(Column) :-
+        get_code(Code),
+        Column is Code - 96.
+
+
+% '1' to 1
+getRow(Row) :-
+        get_code(Code),
+        Row is Code - 48.
 
 inputSecondAttack(Enemy, Board, EnemyRow, EnemyColumn):-
         print('Select second enemy to be removed (ex: 1a, 5e...)'), nl, print('> '),
@@ -477,7 +503,11 @@ playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, 
         print('Invalid selection!'), nl,
         playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _, DropInitiative, NewDropInitiative, human, _).
 
-% easy will choose a random position in the current board
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%    AI FUNCTIONS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Easy will choose a random position in the current board
 playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, easy) :-
         getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) ->
                 random_member(RandomMove, Moves),
@@ -486,7 +516,7 @@ playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, 
         ;
         noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
         
-% medium will calculate the best move in the current board
+% Medium will calculate the best move in the current board
 playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, medium) :-
         getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) ->
                 bestMove(Moves, BestMove, _Value, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
@@ -494,7 +524,7 @@ playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, E
                 movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative);
         noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
-% hard will do a minimax, calculating the best move 3 steps ahead
+% Hard will do a minimax, calculating the best move 3 steps ahead
 playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, hard) :-
         minimax(Board, BestMove, _Val, 3, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
         !, nonvar(BestMove) -> % check if minimax returned a best move successfully
@@ -503,6 +533,8 @@ playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, E
         ;
         noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
+% BestMove is used by medium difficulty to find the best move in the current board (not thinking any moves ahead).
+% It is closely related to best/9 used by minimax
 bestMove([Move], Move, BestValue, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative):-
         movePiece(Player, Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, _NewDropInitiative),
         value(NewBoard, Player, PlayerNewUnusedPieces, EnemyUnusedPieces, BestValue).
@@ -517,16 +549,8 @@ betterOf(Move1, Val1, _Move2, Val2, Move1, Val1) :-
   Val1 > Val2, !.
 
 betterOf(_Move1, _Val1, Move2, Val2, Move2, Val2).
-
-countAllAttacks(Player, Board, NumberOfAttacks):-
-        findall(Position, (isBoardPosition(Position), isOccupiedBy(Player, Position, Board)), Positions),
-        findall(Position-Attack, (isBoardPosition(Attack), 
-                                   member(Position, Positions), 
-                                   validAttack(Player, Position, Attack, Board)
-                                 ), Attacks),
-        length(Attacks, NumberOfAttacks).
                 
-
+% This returns all possible drops, moves and attacks. Fails if there isn't any possibility.
 getAllMoves(Player, Board, ShuffledMoves, PlayerUnusedPieces, DropInitiative) :-   
     (   % if
             PlayerUnusedPieces > 0 ->  % player can drop
@@ -551,7 +575,7 @@ getAllMoves(Player, Board, ShuffledMoves, PlayerUnusedPieces, DropInitiative) :-
                     append(Drops, [], Moves)
     ),
     (length(Moves, NumberOfMoves), NumberOfMoves =:= 0 ->
-        fail
+        fail  % it might occur that no moves are possible. This situation must be warned and handled correctly
     ;                                                  
     random_permutation(Moves, ShuffledMoves)). % this will add randomness to the minimax
 
@@ -562,7 +586,17 @@ executeAllMoves(Player, Board, Moves, NewBoardList, PlayerUnusedPieces, EnemyUnu
                  ),
                  NewBoardList).
 
+% counts all attacks in the board (ignoring second attacks)
+countAllAttacks(Player, Board, NumberOfAttacks):-
+        findall(Position, (isBoardPosition(Position), isOccupiedBy(Player, Position, Board)), Positions),
+        findall(Position-Attack, (isBoardPosition(Attack), 
+                                   member(Position, Positions), 
+                                   validAttack(Player, Position, Attack, Board)
+                                 ), Attacks),
+        length(Attacks, NumberOfAttacks).
 
+% The value of any given game situation. Victory is equal to 1000 points.
+% If there isn't a victory, the advantage in number of pieces and number of attacks is calculated.
 value(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
         gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Winner),
          (
@@ -581,7 +615,8 @@ value(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, Value):-
         countAllAttacks(Enemy, Board, NumberOfEnemyAttacks),
         Value is UnusedPiecesVal + PiecesVal + NumberOfPlayerAttacks - NumberOfEnemyAttacks.
 
-
+%% Minimax/8, best/9 and betterof/6 are based on Bratko Ivan's implementation in
+%% his book, Prolog Programming for Artificial Intelligence
 minimax(Board, BestMove, Val, Depth, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative) :-
   ( (Depth =:= 0 ; gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, _Winner) ) ->
     value(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, Val) 
@@ -607,10 +642,7 @@ best([Move1|Moves], BestMove, BestVal, Depth, Board, Player, PlayerUnusedPieces,
   best(Moves, Move2, Val2, Depth, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
   betterof(Move1, Val1, Move2, Val2, BestMove, BestVal, Depth).
 
-
-   %  The next predicates are used by both minimax and alphabeta
-
-
+%  The next predicates are used by both minimax and alphabeta
 betterof(Move0, Val0, _Move1, Val1, Move0, Val0, Depth) :-
   min_to_move(Depth), Val0 > Val1, !
   ;
@@ -629,7 +661,11 @@ min_to_move(Depth) :-
 odd(X) :- X mod 2 =:= 1.
 even(X) :- \+ odd(X).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%    MOVEMENT FUNCTIONS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% Executes an attack and a second attack
 movePiece(Player, Position-Attack-SecondAttack, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative):-
         DropInitiative == Player,
         convert(Position, Row, Column),
@@ -649,7 +685,8 @@ movePiece(Player, Position-Attack-SecondAttack, Board, NewBoard, PlayerUnusedPie
                 PlayerNewUnusedPieces is PlayerUnusedPieces,
                 versus(Player, Opponent),     % if a player moves, the drop
                 NewDropInitiative = Opponent. % initiative goes to the opponent
-        
+     
+% Exectutes a simple move
 movePiece(Player, Position-Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative):-
         DropInitiative == Player,
         convert(Position, Row, Column),
@@ -661,6 +698,7 @@ movePiece(Player, Position-Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewU
                 versus(Player, Opponent),     % if a player moves, the drop
                 NewDropInitiative = Opponent. % initiative goes to the opponent
 
+% Executes a drop
 movePiece(Player, Drop, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative):-
         convert(Drop, Row, Column),
         validDrop(Row, Column, Board) ->
