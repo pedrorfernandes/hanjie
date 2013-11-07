@@ -169,7 +169,30 @@ pressEnter:-
         skip_line.
 
 printHelp:-
-        print('This game is easy, you can figure it out.'), nl,
+        print('Choko is a game a that is a bit similar to checkers, except that instead of '), nl,
+        print('moving diagonally, we move pieces orthogonally (up, down, left or right).'), nl,
+        nl,
+        print('We start with an empty board and each player must begin dropping their 12 pieces.'), nl,
+        nl,
+        print('An attack is simple, just like in checkers: if the player can move a piece orthogonally '), nl,
+        print('over an opponent piece and drop it onto an empty space, the player conquers that piece. '), nl,
+        print('After this move, the player must select another opponent piece in the board at will '), nl,
+        print('and take that one too. In other words, for each attack, a player takes 2 pieces '), nl,
+        print('with him (if possible).'), nl,
+         nl,
+        print('There is a rule called Drop Initiative in the first phase of the game. The first player '), nl,
+        print('starts with this initiative and this means he can drop, move or attack. If he chooses '), nl,
+        print('to drop, the drop initiative will remain his. However, if the player chooses to move or attack,'), nl,
+        print('the drop initiative now belongs to the opponent. Not having the drop initiative'), nl,
+        print('indicates that you can only drop pieces in your turn. '), nl,
+        print('In simpler terms, this means that if a player drops a piece, the opponent must continue to do '), nl,
+        print('so (and can\'t attack).'), nl,
+        nl,
+        print('A game ends when one of the players loses all his 12 pieces. '), nl,
+        print('The victor is the last man standing.'), nl,
+        nl,
+        print('Hope you enjoy the game and have fun!'), nl,
+        nl,
         pressEnter.
 
 getOption(Option):-
