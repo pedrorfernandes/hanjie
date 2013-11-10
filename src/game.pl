@@ -169,7 +169,7 @@ pressEnter:-
         skip_line.
 
 printHelp:-
-        print('Choko is a game a that is a bit similar to checkers, except that instead of '), nl,
+        print('Choko is a game that is a bit similar to checkers, except that instead of '), nl,
         print('moving diagonally, we move pieces orthogonally (up, down, left or right).'), nl,
         nl,
         print('We start with an empty board and each player must begin dropping their 12 pieces.'), nl,
