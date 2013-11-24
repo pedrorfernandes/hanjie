@@ -1,4 +1,43 @@
 :- use_module(library(random), [random_member/2, random_permutation/2]).
+:-use_module(library(sockets)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%          SOCKET          %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+port(60002).
+
+server:-
+        port(Port),
+        socket_server_open(Port,Socket),
+        socket_server_accept(Socket, _Client, Stream, [type(text)]),
+        server_loop(Stream),
+        socket_server_close(Socket),
+        write('Server Exit'),nl.
+
+server_loop(Stream) :-
+        repeat,
+                read(Stream, ClientRequest),
+                write('Received: '), write(ClientRequest), nl, 
+                server_input(ClientRequest, ServerReply),
+                format(Stream, '~q.~n', [ServerReply]),
+                write('Send: '), write(ServerReply), nl, 
+                flush_output(Stream),
+        (ClientRequest == bye; ClientRequest == end_of_file), !.
+
+server_input(initialize, [[ 1, 2, 3, 4, 5, 6, 7, 8, 9,10, 11,12,13,14,15, 16,17,18,19,20, 21,22,23,24,25], x, 12, 12, x]):- !.
+server_input(execute(Move, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative), [NewBoard, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative]):-
+        versus(Player, Enemy),
+        movePiece(Player, Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative), !.
+server_input(calculate(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative, PlayerDifficulty), [NewBoard, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative]):- 
+        versus(Player, Enemy),
+        playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, PlayerDifficulty), !.
+server_input(gameOver(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces), Winner):- 
+        gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Winner), !.
+server_input(bye, ok):-!.
+server_input(end_of_file, ok):-!.
+server_input(_, invalid) :- !.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%    PRINTING FUNCTIONS    %%%%
