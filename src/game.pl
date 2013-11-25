@@ -1,11 +1,14 @@
 :- use_module(library(random), [random_member/2, random_permutation/2]).
-:-use_module(library(sockets)).
+:- use_module(library(sockets)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%          SOCKET          %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-port(60002).
+port(60001).
+
+user:runtime_entry(start) :-
+        server.
 
 server:-
         port(Port),
@@ -588,7 +591,7 @@ playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, E
 
 % Hard will do a minimax, calculating the best move 3 steps ahead
 playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, hard) :-
-        minimax(Board, BestMove, _Val, 3, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
+        minimax(Board, BestMove, _Val, 2, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
         !, nonvar(BestMove) -> % check if minimax returned a best move successfully
                 printMove(BestMove),
                 movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
