@@ -29,12 +29,14 @@ server_loop(Stream) :-
         (ClientRequest == bye; ClientRequest == end_of_file), !.
 
 server_input(initialize, [[ 1, 2, 3, 4, 5, 6, 7, 8, 9,10, 11,12,13,14,15, 16,17,18,19,20, 21,22,23,24,25], x, 12, 12, x]):- !.
-server_input(execute(Move, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative), [NewBoard, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative]):-
+server_input(execute(Move, Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative), 
+                        [NewBoard, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative]):-
         versus(Player, Enemy),
         movePiece(Player, Move, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative), !.
-server_input(calculate(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative, PlayerDifficulty), [NewBoard, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative]):- 
+server_input(calculate(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative, PlayerDifficulty), 
+                        [NewBoard, Enemy, EnemyUnusedPieces, PlayerNewUnusedPieces, NewDropInitiative, Move]):- 
         versus(Player, Enemy),
-        playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, PlayerDifficulty), !.
+        playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, PlayerDifficulty, Move), !.
 server_input(gameOver(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces), Winner):- 
         gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Winner), !.
 server_input(bye, ok):-!.
@@ -361,7 +363,7 @@ printWinner(Winner, Board):-
 % the main game function prints board, calls the current player's turn, checks victory and calls the next turn with the opponent player
 game(Board, Player, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative, PlayerType, PlayerDifficulty, OpponentType, OpponentDifficulty) :- 
         showBoard(Player, Board, PlayerUnusedPieces, OpponentUnusedPieces, DropInitiative), !,
-        playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, OpponentUnusedPieces, DropInitiative, NewDropInitiative, PlayerType, PlayerDifficulty),
+        playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, OpponentUnusedPieces, DropInitiative, NewDropInitiative, PlayerType, PlayerDifficulty, _),
         ( % if
            gameOver(Player, NewBoard, PlayerNewUnusedPieces, OpponentUnusedPieces, Winner) ->
                 printWinner(Winner, NewBoard);
@@ -542,7 +544,7 @@ userMovePiece(Player, Row, Column, Board, NewBoard):-
         print('Invalid move or attack!'), nl,
         userMovePiece(Player, Row, Column, Board, NewBoard).
 
-playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, human, _) :- 
+playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, human, _, _) :- 
         \+ getAllMoves(Player, Board, _Moves, PlayerUnusedPieces, DropInitiative) ->
                 noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
         ;
@@ -561,39 +563,39 @@ playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, 
                        NewDropInitiative = Opponent; % initiative goes to the opponent
               % else
                 print('Invalid selection!'), nl,
-                playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _, DropInitiative, NewDropInitiative, human, _)
+                playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _, DropInitiative, NewDropInitiative, human, _, _)
         )
         ;
         % input failed, retry
         print('Invalid selection!'), nl,
-        playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _, DropInitiative, NewDropInitiative, human, _).
+        playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _, DropInitiative, NewDropInitiative, human, _, _).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%    AI FUNCTIONS    %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Easy will choose a random position in the current board
-playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, easy) :-
+playerTurn(Player, Board , NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, _EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, easy, RandomMove) :-
         getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) ->
                 random_member(RandomMove, Moves),
-                printMove(RandomMove),
+                % printMove(RandomMove),
                 movePiece(Player, RandomMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
         ;
         noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
         
 % Medium will calculate the best move in the current board
-playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, medium) :-
+playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, medium, BestMove) :-
         getAllMoves(Player, Board, Moves, PlayerUnusedPieces, DropInitiative) ->
                 bestMove(Moves, BestMove, _Value, Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
-                printMove(BestMove),
+                % printMove(BestMove),
                 movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative);
         noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
 
 % Hard will do a minimax, calculating the best move 3 steps ahead
-playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, hard) :-
+playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, hard, BestMove) :-
         minimax(Board, BestMove, _Val, 2, Player, PlayerUnusedPieces, EnemyUnusedPieces, DropInitiative),
         !, nonvar(BestMove) -> % check if minimax returned a best move successfully
-                printMove(BestMove),
+                % printMove(BestMove),
                 movePiece(Player, BestMove, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative)
         ;
         noMovesPossible(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, DropInitiative, NewDropInitiative).
