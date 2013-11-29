@@ -1,5 +1,6 @@
-:- use_module(library(random), [random_member/2, random_permutation/2]).
+:- use_module(library(random), [random_member/2, random_permutation/2, setrand/1]).
 :- use_module(library(sockets)).
+:- use_module(library(system), [now/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%          SOCKET          %%%%
@@ -275,7 +276,10 @@ selectPlayer(NewPlayerType, NewPlayerDifficulty):-
         ).
 
 % This will start a newgame! Default starting players are human vs medium computer
-newgame :- newgame(human, hard, computer, medium).
+newgame :- 
+    now(Time),
+    setrand(Time),
+    newgame(human, hard, computer, medium).
         
 newgame(Player1Type, Player1Difficulty, Player2Type, Player2Difficulty):-
         print('Welcome to choko!'), nl,
