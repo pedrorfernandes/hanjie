@@ -40,8 +40,8 @@ server_input(calculate(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, Dro
         playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, PlayerDifficulty, Move), !.
 server_input(gameOver(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces), Winner):- 
         gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Winner), !.
-server_input(getAllMoves(Player, Piece, Board, DropInitiative), Moves):-
-        getAllMoves(Player, Piece, Board, Moves, DropInitiative), !.
+server_input(getPieceMoves(Player, Piece, Board, DropInitiative), Moves):-
+        getPieceMoves(Player, Piece, Board, Moves, DropInitiative), !.
 server_input(bye, ok):-!.
 server_input(end_of_file, ok):-!.
 server_input(_, invalid) :- !.
@@ -624,7 +624,7 @@ betterOf(Move1, Val1, _Move2, Val2, Move1, Val1) :-
 betterOf(_Move1, _Val1, Move2, Val2, Move2, Val2).
 
 % This returns all possible moves and attacks from a player piece
-getAllMoves(Player, Piece, Board, Moves, DropInitiative) :-       
+getPieceMoves(Player, Piece, Board, Moves, DropInitiative) :-       
     (% if
             DropInitiative == Player ->  % player can move and attack
                     findall(Move, (isBoardPosition(Move), validMove(Piece, Move, Board) ), Movements),
