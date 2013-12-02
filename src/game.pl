@@ -40,7 +40,7 @@ server_input(calculate(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, Dro
         playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, PlayerDifficulty, Move), !.
 server_input(gameOver(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces), Winner):- 
         gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Winner), !.
-server_input(getAllMoves(Player, Piece, Board, Moves, DropInitiative), Moves):-
+server_input(getAllMoves(Player, Piece, Board, DropInitiative), Moves):-
         getAllMoves(Player, Piece, Board, Moves, DropInitiative), !.
 server_input(bye, ok):-!.
 server_input(end_of_file, ok):-!.
