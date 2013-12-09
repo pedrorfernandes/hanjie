@@ -40,8 +40,8 @@ server_input(calculate(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces, Dro
         playerTurn(Player, Board, NewBoard, PlayerUnusedPieces, PlayerNewUnusedPieces, EnemyUnusedPieces, DropInitiative, NewDropInitiative, computer, PlayerDifficulty, Move), !.
 server_input(gameOver(Board, Player, PlayerUnusedPieces, EnemyUnusedPieces), Winner):- 
         gameOver(Player, Board, PlayerUnusedPieces, EnemyUnusedPieces, Winner), !.
-server_input(getPieceMoves(Player, Piece, Board, DropInitiative), Moves):-
-        getPieceMoves(Player, Piece, Board, Moves, DropInitiative), !.
+server_input(getPieceMoves(Player, Piece, Board, DropInitiative), [Moves, Attacks, Enemies]):-
+        getPieceMoves(Player, Piece, Board, Moves, Attacks, Enemies, DropInitiative) , !.
 server_input(bye, ok):-!.
 server_input(end_of_file, ok):-!.
 server_input(_, invalid) :- !.
@@ -430,6 +430,12 @@ validAttack(Player, Position, NewPosition, Board):-
         convert(NewPosition, NewRow, NewColumn),
         validAttack(Player, Row, Column, NewRow, NewColumn, _EnemyRow, _EnemyColumn, Board).
 
+validAttack(Player, Position, NewPosition, EnemyPosition, Board):-
+        convert(Position, Row, Column),
+        convert(NewPosition, NewRow, NewColumn),
+        validAttack(Player, Row, Column, NewRow, NewColumn, EnemyRow, EnemyColumn, Board),
+        convert(EnemyPosition, EnemyRow, EnemyColumn).
+
 validAttack(Player, Position, NewPosition, EnemyPosition, SecondEnemyPosition, Board):-
         SecondEnemyPosition \= Position, SecondEnemyPosition \= NewPosition,
         convert(Position, Row, Column),
@@ -624,14 +630,16 @@ betterOf(Move1, Val1, _Move2, Val2, Move1, Val1) :-
 betterOf(_Move1, _Val1, Move2, Val2, Move2, Val2).
 
 % This returns all possible moves and attacks from a player piece
-getPieceMoves(Player, Piece, Board, Moves, DropInitiative) :-       
+getPieceMoves(Player, Piece, Board, Moves, Attacks, Enemies, DropInitiative) :-       
     (% if
             DropInitiative == Player ->  % player can move and attack
-                    findall(Move, (isBoardPosition(Move), validMove(Piece, Move, Board) ), Movements),
+                    findall(Move, (isBoardPosition(Move), validMove(Piece, Move, Board) ), Moves),
                     findall(Attack, (isBoardPosition(Attack), validAttack(Player, Piece, Attack, Board) ), Attacks),
-                    append(Movements, Attacks, Moves);
-                % else    
-                    append([], [], Moves)
+                    findall(Enemy, (isBoardPosition(Attack), validAttack(Player, Piece, Attack, Enemy, Board) ), Enemies)
+                ; % else    
+                    append([], [], Moves),
+                    append([], [], Attacks),
+                    append([], [], Enemies)
     ).
                 
 % This returns all possible drops, moves and attacks. Fails if there isn't any possibility.
