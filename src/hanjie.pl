@@ -15,17 +15,34 @@ hanjie(Filename) :-
         readFile(Filename, ClueRows, ClueCols, NumberOfRows, NumberOfCols),
         generateBoard(NumberOfRows, NumberOfCols, BoardRows), !,
         transpose(BoardRows, BoardCols),
+        checkSum(BoardRows, ClueRows, NumberOfRows),
+        checkSum(BoardCols, ClueCols, NumberOfCols),
         print('Start row automatons'), nl,
         constrainBoard(BoardRows, ClueRows, NumberOfRows),
         print('Start col automatons'), nl,
         constrainBoard(BoardCols, ClueCols, NumberOfCols),
-        checkSum(BoardRows, ClueRows, NumberOfRows),
-        checkSum(BoardCols, ClueCols, NumberOfCols),
         flatten(BoardRows, BoardList),
         print('start labeling'), nl,
-        labeling([], BoardList),
-        pretty_print(BoardRows).
+        labeling([down], BoardList),
+        prettyPrint(BoardRows).
         
+prettyPrint([]).
+prettyPrint([H|T]) :-
+        prettyRow(H), nl,
+        prettyPrint(T).
+
+prettyRow([]).
+prettyRow([H|T]):-
+        prettyPiece(H),
+        prettyRow(T).
+
+prettyPiece(Piece) :-
+        Piece =:= 0 ->
+            print('  ')
+        ;
+        Piece =:= 1 ->
+            print('# ').
+
 flatten([],[]).
 flatten([H|T],Vars) :-
         flatten(T,TVars),
@@ -46,7 +63,7 @@ constrainBoard(Board, ClueRows, CurrentRow) :-
         nth1(CurrentRow, ClueRows, ClueRow),
         constrain(Row, ClueRow),
         NextRow is CurrentRow - 1,
-        checkSum(Board, ClueRows, NextRow).
+        constrainBoard(Board, ClueRows, NextRow).
                        
         
 generateList(List, NumberOfElements) :-
@@ -61,20 +78,6 @@ generateRows([Row | Rows], NumberOfCols) :-
         generateList(Row, NumberOfCols),
         domain(Row, 0, 1),
         generateRows(Rows, NumberOfCols).
-
-getRow(RowNumber, Board, Row):-
-        nth1(RowNumber, Board, Row).
-
-getCol(ColNumber, Board, Col):-
-        length(Board, NumberOfRows),
-        getColAux(Board, ColNumber, NumberOfRows, [], Col).
-
-getColAux(_Board, _ColNumber, 0, Col, Col).
-getColAux(Board, ColNumber, Row, CurrentCol, Col):-
-        getPiece(Board, Row, ColNumber, Piece),
-        append([Piece], CurrentCol, NextCol),
-        NextRow is Row - 1,
-        getColAux(Board, ColNumber, NextRow, NextCol, Col).
 
 getPiece(Board, RowNumber, ColNumber, Piece):-
         nth1(RowNumber, Board, Row),
@@ -101,16 +104,8 @@ readStream(Stream, Rows, Cols) :-
         ;
         !, print('Invalid File!'), false.
 
-
-pretty_print([]).
-pretty_print([H|T]) :-
-        write(H),nl,
-        pretty_print(T).
-
 constrain(Sequence, Clues):-
         buildAutomaton(Clues, 1, [source(1)], [], States, Arcs), !,
-        print(States), nl,
-        print(Arcs), nl,
         automaton(Sequence, States, Arcs).
 
 buildAutomaton([], _CurrentState, FinalStates, FinalArcs, FinalStates, FinalArcs).
