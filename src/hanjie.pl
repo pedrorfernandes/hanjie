@@ -15,15 +15,15 @@ hanjie(Filename) :-
         readFile(Filename, ClueRows, ClueCols, NumberOfRows, NumberOfCols),
         generateBoard(NumberOfRows, NumberOfCols, BoardRows), !,
         transpose(BoardRows, BoardCols),
-        checkSum(BoardRows, ClueRows, NumberOfRows),
-        checkSum(BoardCols, ClueCols, NumberOfCols),
         print('Start row automatons'), nl,
         constrainBoard(BoardRows, ClueRows, NumberOfRows),
         print('Start col automatons'), nl,
         constrainBoard(BoardCols, ClueCols, NumberOfCols),
+        checkSum(BoardRows, ClueRows, NumberOfRows),
+        checkSum(BoardCols, ClueCols, NumberOfCols),
         flatten(BoardRows, BoardList),
         print('start labeling'), nl,
-        labeling([ff], BoardList),
+        labeling([], BoardList),
         pretty_print(BoardRows).
         
 flatten([],[]).
@@ -108,10 +108,12 @@ pretty_print([H|T]) :-
         pretty_print(T).
 
 constrain(Sequence, Clues):-
-        buildAutomaton(Clues, 1, [], [], States, Arcs),
+        buildAutomaton(Clues, 1, [source(1)], [], States, Arcs), !,
+        print(States), nl,
+        print(Arcs), nl,
         automaton(Sequence, States, Arcs).
 
-buildAutomaton([], _CurrentState, FinalStates, FinalArcs, FinalStates, FinalArcs):- !.
+buildAutomaton([], _CurrentState, FinalStates, FinalArcs, FinalStates, FinalArcs).
 
 buildAutomaton([Clue], CurrentState, CurrentStates, CurrentArcs, FinalStates, FinalArcs):-
         generateStates(Clue, CurrentState, [], CurrentState, NewStates),
@@ -123,7 +125,7 @@ buildAutomaton([Clue], CurrentState, CurrentStates, CurrentArcs, FinalStates, Fi
         buildAutomaton([], NextState, NextStates, NextArcs, FinalStates, FinalArcs).
 
 buildAutomaton([Clue|Clues], CurrentState, CurrentStates, CurrentArcs, FinalStates, FinalArcs):-
-        generateStates(Clue, CurrentState, [source(CurrentState)], CurrentState, NewStates),
+        generateStates(Clue, CurrentState, [], CurrentState, NewStates),
         append(CurrentStates, NewStates, NextStates), 
         generateArcs(Clue, CurrentState, CurrentState, [], NewArcs, connected),
         append(CurrentArcs, NewArcs, NextArcs),
