@@ -1,6 +1,6 @@
 :- use_module(library(clpfd)). 
 :- use_module(library(lists)).
-:- use_module(library(fdbg)).
+% :- use_module(library(fdbg)).
 
 go:- hanjie('flower.txt').
 
@@ -15,15 +15,16 @@ hanjie(Filename) :-
         readFile(Filename, ClueRows, ClueCols, NumberOfRows, NumberOfCols),
         generateBoard(NumberOfRows, NumberOfCols, BoardRows), !,
         transpose(BoardRows, BoardCols),
-        checkSum(BoardRows, ClueRows, NumberOfRows),
-        checkSum(BoardCols, ClueCols, NumberOfCols),
-        print('Start row automatons'), nl,
-        constrainBoard(BoardRows, ClueRows, NumberOfRows),
-        print('Start col automatons'), nl,
-        constrainBoard(BoardCols, ClueCols, NumberOfCols),
-        flatten(BoardRows, BoardList),
-        print('start labeling'), nl,
-        labeling([down], BoardList),
+        flatten(BoardRows, FlatBoard),
+        print('Generating automatons..'), nl,
+        generateAutomatons(ClueRows, NumberOfRows, [], [], ClueRowStates, ClueRowArcs),
+        generateAutomatons(ClueCols, NumberOfCols, [], [], ClueColStates, ClueColArcs),
+        print('Constraining rows..'), nl,
+        constrainBoard(BoardRows, ClueRows, NumberOfRows, ClueRowStates, ClueRowArcs),
+        print('Constraining cols..'), nl,
+        constrainBoard(BoardCols, ClueCols, NumberOfCols, ClueColStates, ClueColArcs),
+        print('Labeling..'), nl,
+        labeling([ff], FlatBoard),
         prettyPrint(BoardRows).
         
 prettyPrint([]).
@@ -48,23 +49,26 @@ flatten([H|T],Vars) :-
         flatten(T,TVars),
         append(H,TVars,Vars).
 
-checkSum(_Board, _ClueRows, 0).
-checkSum(Board, ClueRows, CurrentRow) :-
-        nth1(CurrentRow, Board, Row),
+constrainBoard(_Board, _ClueRows, 0, _ClueRowStates, _ClueRowArcs).
+constrainBoard(Board, ClueRows, CurrentRow, ClueRowStates, ClueRowArcs) :-
+        nth1(CurrentRow, Board, Sequence),
         nth1(CurrentRow, ClueRows, ClueRow),
+        nth1(CurrentRow, ClueRowStates, States),
+        nth1(CurrentRow, ClueRowArcs, Arcs),
         sum(ClueRow, #=, Sum),
-        sum(Row, #=, Sum),
+        sum(Sequence, #=, Sum),
+        automaton(Sequence, States, Arcs),
         NextRow is CurrentRow - 1,
-        checkSum(Board, ClueRows, NextRow).
+        constrainBoard(Board, ClueRows, NextRow, ClueRowStates, ClueRowArcs).
 
-constrainBoard(_Board, _ClueRows, 0).
-constrainBoard(Board, ClueRows, CurrentRow) :-
-        nth1(CurrentRow, Board, Row),
+generateAutomatons(_ClueRows, 0, FinalStates, FinalArcs, FinalStates, FinalArcs).
+generateAutomatons(ClueRows, CurrentRow, CurrentStates, CurrentArcs, FinalStates, FinalArcs) :-
         nth1(CurrentRow, ClueRows, ClueRow),
-        constrain(Row, ClueRow),
+        buildAutomaton(ClueRow, 1, [source(1)], [], States, Arcs), !,
+        append([States], CurrentStates, NewStates),
+        append([Arcs], CurrentArcs, NewArcs),
         NextRow is CurrentRow - 1,
-        constrainBoard(Board, ClueRows, NextRow).
-                       
+        generateAutomatons(ClueRows, NextRow, NewStates, NewArcs, FinalStates, FinalArcs).  
         
 generateList(List, NumberOfElements) :-
         length(List, NumberOfElements).
@@ -103,10 +107,6 @@ readStream(Stream, Rows, Cols) :-
         read(Stream, Cols)
         ;
         !, print('Invalid File!'), false.
-
-constrain(Sequence, Clues):-
-        buildAutomaton(Clues, 1, [source(1)], [], States, Arcs), !,
-        automaton(Sequence, States, Arcs).
 
 buildAutomaton([], _CurrentState, FinalStates, FinalArcs, FinalStates, FinalArcs).
 
@@ -173,11 +173,15 @@ generateArcs(Clue, StartingState, CurrentState, Arcs, FinalArcs, Connection):-
         append(NextArcs1, [arc(CurrentState, 1, NextState)], NextArcs2),
         generateArcs(Clue, StartingState, NextState, NextArcs2, FinalArcs, Connection).
 
-% Takes this brief example of restricting clues
+% Take this brief example of restricting clues
 % This automaton restricts the clues [2,2] for a sequence of any size
 % Possible solution: [1, 1, 0, 1, 1]
 % Or even:           [0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0]
+% We must pay attention that prolog automatons don't have a final state
+% So, in order to get the correct sequence, we must use sum/3 to 
+% validate first before running this automaton
 exampleSequence(Sequence) :-
+    sum(Sequence, #=, 4),
     automaton(Sequence,
         [source(1), sink(1), sink(2), sink(3), sink(4), sink(5), sink(6)],
         [arc(1, 1, 2),     arc(1, 0, 1),      % as many zeros as we want in the begining
