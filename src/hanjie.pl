@@ -2,27 +2,30 @@
 :- use_module(library(lists)).
 % :- use_module(library(fdbg)).
 
-go:- hanjie('flower.txt').
-
 test(Filename):-
         statistics(runtime, [T0|_]),
         hanjie(Filename),
         statistics(runtime, [T1|_]),
         T is T1 - T0,
-        format('p/0 took ~3d sec.~n', [T]).
+        format('Hanjie took ~3d sec.~n', [T]).
 
 hanjie(Filename) :-
+        print('Reading from file..'), nl,
         readFile(Filename, ClueRows, ClueCols, NumberOfRows, NumberOfCols),
         generateBoard(NumberOfRows, NumberOfCols, BoardRows), !,
         transpose(BoardRows, BoardCols),
         flatten(BoardRows, FlatBoard),
-        print('Generating automatons..'), nl,
+        
+        print('Generating row automatons..'), nl,
         generateAutomatons(ClueRows, NumberOfRows, [], [], ClueRowStates, ClueRowArcs),
+        print('Generating col automatons..'), nl,
         generateAutomatons(ClueCols, NumberOfCols, [], [], ClueColStates, ClueColArcs),
+        
         print('Constraining rows..'), nl,
         constrainBoard(BoardRows, ClueRows, NumberOfRows, ClueRowStates, ClueRowArcs),
         print('Constraining cols..'), nl,
         constrainBoard(BoardCols, ClueCols, NumberOfCols, ClueColStates, ClueColArcs),
+        
         print('Labeling..'), nl,
         labeling([down], FlatBoard),
         prettyPrint(BoardRows).
@@ -64,7 +67,7 @@ constrainBoard(Board, ClueRows, CurrentRow, ClueRowStates, ClueRowArcs) :-
 generateAutomatons(_ClueRows, 0, FinalStates, FinalArcs, FinalStates, FinalArcs).
 generateAutomatons(ClueRows, CurrentRow, CurrentStates, CurrentArcs, FinalStates, FinalArcs) :-
         nth1(CurrentRow, ClueRows, ClueRow),
-        buildAutomaton(ClueRow, 1, [source(1)], [], States, Arcs), !,
+        buildAutomaton(ClueRow, 1, [], [], States, Arcs), !,
         append([States], CurrentStates, NewStates),
         append([Arcs], CurrentArcs, NewArcs),
         NextRow is CurrentRow - 1,
@@ -111,8 +114,7 @@ readStream(Stream, Rows, Cols) :-
 buildAutomaton([], _CurrentState, FinalStates, FinalArcs, FinalStates, FinalArcs).
 
 buildAutomaton([Clue], CurrentState, CurrentStates, CurrentArcs, FinalStates, FinalArcs):-
-        generateStates(Clue, CurrentState, [], CurrentState, NewStates),
-        append(CurrentStates, NewStates, NextStates), 
+        append(CurrentStates, [source(1), sink(LastState)], NextStates), 
         generateArcs(Clue, CurrentState, CurrentState, [], NewArcs, _), % not connected, last sequence
         append(CurrentArcs, NewArcs, NextArcs),
         getLastState(NextArcs, LastState),
@@ -120,26 +122,15 @@ buildAutomaton([Clue], CurrentState, CurrentStates, CurrentArcs, FinalStates, Fi
         buildAutomaton([], NextState, NextStates, NextArcs, FinalStates, FinalArcs).
 
 buildAutomaton([Clue|Clues], CurrentState, CurrentStates, CurrentArcs, FinalStates, FinalArcs):-
-        generateStates(Clue, CurrentState, [], CurrentState, NewStates),
-        append(CurrentStates, NewStates, NextStates), 
         generateArcs(Clue, CurrentState, CurrentState, [], NewArcs, connected),
         append(CurrentArcs, NewArcs, NextArcs),
         getLastState(NextArcs, LastState),
         NextState is LastState + 1,
-        buildAutomaton(Clues, NextState, NextStates, NextArcs, FinalStates, FinalArcs).
+        buildAutomaton(Clues, NextState, CurrentStates, NextArcs, FinalStates, FinalArcs).
 
 getLastState(States, LastState):-
         last(States, Sink),
         Sink =.. [_,LastState|_].
-
-generateStates(Clue, StartingState, CurrentStates, FinalState, FinalStates):-
-        FinalState is Clue + StartingState,
-        append(CurrentStates, [sink(FinalState)], FinalStates).
-
-generateStates(Clue, StartingState, States, CurrentState, FinalStates):-
-        append(States, [sink(CurrentState)], NextStates),
-        NextState is CurrentState + 1,
-        generateStates(Clue, StartingState, NextStates, NextState, FinalStates).
 
 % final Arc
 generateArcs(Clue, StartingState, FinalState, Arcs, FinalArcs, Connection):-
@@ -183,7 +174,7 @@ generateArcs(Clue, StartingState, CurrentState, Arcs, FinalArcs, Connection):-
 exampleSequence(Sequence) :-
     sum(Sequence, #=, 4),
     automaton(Sequence,
-        [source(1), sink(1), sink(2), sink(3), sink(4), sink(5), sink(6)],
+        [source(1), sink(6)],
         [arc(1, 1, 2),     arc(1, 0, 1),      % as many zeros as we want in the begining
          arc(2, 1, 3),     arc(2, 0, false),  % 1's sequence in progress
          arc(3, 1, false), arc(3, 0, 4),      % 1's sequence ends
