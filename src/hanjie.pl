@@ -24,7 +24,7 @@ hanjie(Filename) :-
         print('Constraining cols..'), nl,
         constrainBoard(BoardCols, ClueCols, NumberOfCols, ClueColStates, ClueColArcs),
         print('Labeling..'), nl,
-        labeling([ff], FlatBoard),
+        labeling([down], FlatBoard),
         prettyPrint(BoardRows).
         
 prettyPrint([]).
