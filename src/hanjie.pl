@@ -30,7 +30,7 @@ hanjie(Filename) :-
         constrainBoard(BoardCols, ClueCols, NumberOfCols, ClueColStates, ClueColArcs),
         print('Labeling..'), nl,
         labeling([], FlatBoard),
-        prettyPrint(BoardRows), nl,
+        prettyPrint(BoardRows), nl, nl, nl, nl,
         false.
         
 prettyPrint([]).
@@ -75,34 +75,19 @@ generateAutomatons(ClueRows, CurrentRow, CurrentStates, CurrentArcs, FinalStates
         append([Arcs], CurrentArcs, NewArcs),
         NextRow is CurrentRow - 1,
         generateAutomatons(ClueRows, NextRow, NewStates, NewArcs, FinalStates, FinalArcs).  
-        
-generateList(List, NumberOfElements) :-
-        length(List, NumberOfElements).
 
 generateBoard(NumberOfRows, NumberOfCols, Board) :-
         generateList(Board, NumberOfRows),
         generateRows(Board, NumberOfCols).
+
+generateList(List, NumberOfElements) :-
+        length(List, NumberOfElements).
 
 generateRows([], _ ).
 generateRows([Row | Rows], NumberOfCols) :-
         generateList(Row, NumberOfCols),
         domain(Row, 0, 1),
         generateRows(Rows, NumberOfCols).
-
-generateRandomList(List, NumberOfElements) :-
-        length(List, NumberOfElements),
-        (foreach(X,List) do random(0, 1, X) ).
-
-generateRandomRows([], _ ).
-generateRandomRows([Row | Rows], NumberOfCols) :-
-        generateRandomList(Row, NumberOfCols),
-        generateRandomRows(Rows, NumberOfCols).
-
-generateRandomBoard(NumberOfRows, NumberOfCols, Board) :-
-        now(Time),
-        setrand(Time),
-        generateRandomList(Board, NumberOfRows),
-        generateRandomRows(Board, NumberOfCols).
 
 getPiece(Board, RowNumber, ColNumber, Piece):-
         nth1(RowNumber, Board, Row),
@@ -212,5 +197,55 @@ exampleBuilder(Clues, Sequence, Size):-
         length(Sequence, Size),
         automaton(Sequence, States, Arcs),
         labeling([], Sequence).
-        
-        
+
+%% BOARD RANDOMIZER
+generateRandomBoard(NumberOfRows, NumberOfCols, FileName) :-
+        now(Time),
+        setrand(Time),
+        length(BoardRows, NumberOfRows),
+        generateRandomRows(BoardRows, NumberOfCols),
+        transpose(BoardRows, BoardCols),
+        generateClues(BoardRows, [], ClueRows),
+        generateClues(BoardCols, [], ClueCols),
+        writeFile(FileName, ClueRows, ClueCols),
+        print('Randomized Board is saved to '), print(FileName), nl,
+        prettyPrint(BoardRows).
+
+generateRandomList(List, NumberOfElements) :-
+        length(List, NumberOfElements),
+        (foreach(X,List) do (random(0, 100, Y), X is mod(Y, 2) ) ).
+
+generateRandomRows([], _ ).
+generateRandomRows([Row | Rows], NumberOfCols) :-
+        generateRandomList(Row, NumberOfCols),
+        generateRandomRows(Rows, NumberOfCols).
+
+generateClues([], FinalClues, FinalClues).
+generateClues([Sequence|Board], Clues, FinalClues):-
+        getClues([], Sequence, GeneratedClues),
+        append(Clues, [GeneratedClues], NextClues),
+        generateClues(Board, NextClues, FinalClues).
+
+getClues(FinalClues, [], FinalClues).
+getClues(Clues, Seq, FinalClues) :-
+        sumlist(Seq, NumberOfOnes),
+        NumberOfOnes =:= 0 ->
+                getClues(Clues, [], FinalClues)
+        ;
+        automaton(Seq, _, Seq,
+                  [source(a),sink(b),sink(c)],
+                  [arc(a,0,a,[C,   I+1]),
+                   arc(a,1,b,[C+1, I+1]),
+                   arc(b,1,b,[C+1, I+1]),
+                   arc(b,0,c,[C,   I+1]),
+                   arc(c,0,c,[C,   I  ]),
+                   arc(c,1,c,[C,   I  ]) ],
+                  [C, I],[0, 0],[Counter, Index], []),
+        append(Clues, [Counter], NewClues),
+        split(Seq, Index, RestOfSeq),
+        getClues(NewClues, RestOfSeq, FinalClues).
+
+split(List, 0, List).
+split([_|List], Index, Rest):-
+        NextIndex is Index - 1,
+        split(List, NextIndex, Rest).
