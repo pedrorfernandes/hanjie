@@ -213,7 +213,8 @@ generateRandomBoard(NumberOfRows, NumberOfCols, FileName) :-
 
 generateRandomList(List, NumberOfElements) :-
         length(List, NumberOfElements),
-        (foreach(X,List) do (random(0, 100, Y), X is mod(Y, 2) ) ).
+        (foreach(X,List) do (random(0, 100, Y), X is mod(Y, 2) ) ),
+        sum(List, #>=, 1).
 
 generateRandomRows([], _ ).
 generateRandomRows([Row | Rows], NumberOfCols) :-
