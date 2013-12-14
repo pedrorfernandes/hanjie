@@ -1,5 +1,8 @@
 :- use_module(library(clpfd)). 
 :- use_module(library(lists)).
+:- use_module(library(system), [now/1]).
+:- use_module(library(random), [random/3, setrand/1]).
+
 % :- use_module(library(fdbg)).
 
 test(Filename):-
@@ -25,10 +28,10 @@ hanjie(Filename) :-
         constrainBoard(BoardRows, ClueRows, NumberOfRows, ClueRowStates, ClueRowArcs),
         print('Constraining cols..'), nl,
         constrainBoard(BoardCols, ClueCols, NumberOfCols, ClueColStates, ClueColArcs),
-        
         print('Labeling..'), nl,
-        labeling([down], FlatBoard),
-        prettyPrint(BoardRows).
+        labeling([], FlatBoard),
+        prettyPrint(BoardRows), nl,
+        false.
         
 prettyPrint([]).
 prettyPrint([H|T]) :-
@@ -86,6 +89,21 @@ generateRows([Row | Rows], NumberOfCols) :-
         domain(Row, 0, 1),
         generateRows(Rows, NumberOfCols).
 
+generateRandomList(List, NumberOfElements) :-
+        length(List, NumberOfElements),
+        (foreach(X,List) do random(0, 1, X) ).
+
+generateRandomRows([], _ ).
+generateRandomRows([Row | Rows], NumberOfCols) :-
+        generateRandomList(Row, NumberOfCols),
+        generateRandomRows(Rows, NumberOfCols).
+
+generateRandomBoard(NumberOfRows, NumberOfCols, Board) :-
+        now(Time),
+        setrand(Time),
+        generateRandomList(Board, NumberOfRows),
+        generateRandomRows(Board, NumberOfCols).
+
 getPiece(Board, RowNumber, ColNumber, Piece):-
         nth1(RowNumber, Board, Row),
         nth1(ColNumber, Row, Piece).
@@ -97,12 +115,6 @@ readFile(FileName, Rows, Cols, NumberOfRows, NumberOfCols) :-
         length(Cols, NumberOfCols),
         length(Rows, NumberOfRows).
 
-writeStream(Stream, Rows, Cols) :-
-        write(Stream, rows),
-        write(Stream, Rows),
-        write(Stream, columns),
-        write(Stream, Cols).
-
 readStream(Stream, Rows, Cols) :-
         read(Stream, rows),
         read(Stream, Rows),
@@ -111,10 +123,21 @@ readStream(Stream, Rows, Cols) :-
         ;
         !, print('Invalid File!'), false.
 
+writeFile(FileName, Rows, Cols) :-
+        open(FileName, write, Stream),
+        writeStream(Stream, Rows, Cols),
+        close(Stream).
+
+writeStream(Stream, Rows, Cols) :-
+        write(Stream, rows), write(Stream, '.\n'),
+        write(Stream, Rows), write(Stream, '.\n'),
+        write(Stream, columns), write(Stream, '.\n'),
+        write(Stream, Cols), write(Stream, '.\n').
+
 buildAutomaton([], _CurrentState, FinalStates, FinalArcs, FinalStates, FinalArcs).
 
 buildAutomaton([Clue], CurrentState, CurrentStates, CurrentArcs, FinalStates, FinalArcs):-
-        append(CurrentStates, [source(1), sink(LastState)], NextStates), 
+        append(CurrentStates, [source(1), sink(LastState)], NextStates), % the states list only indicates the first and final state
         generateArcs(Clue, CurrentState, CurrentState, [], NewArcs, _), % not connected, last sequence
         append(CurrentArcs, NewArcs, NextArcs),
         getLastState(NextArcs, LastState),
@@ -171,14 +194,23 @@ generateArcs(Clue, StartingState, CurrentState, Arcs, FinalArcs, Connection):-
 % We must pay attention that prolog automatons don't have a final state
 % So, in order to get the correct sequence, we must use sum/3 to 
 % validate first before running this automaton
-exampleSequence(Sequence) :-
-    sum(Sequence, #=, 4),
+exampleSequence(Sequence, Size) :-
+    length(Sequence, Size),
     automaton(Sequence,
         [source(1), sink(6)],
         [arc(1, 1, 2),     arc(1, 0, 1),      % as many zeros as we want in the begining
          arc(2, 1, 3),     arc(2, 0, false),  % 1's sequence in progress
-         arc(3, 1, false), arc(3, 0, 4),      % 1's sequence ends
+         arc(3, 1, false), arc(3, 0, 4),      % 1's sequence ends, must receive 0
          arc(4, 1, 5),     arc(4, 0, 4),      % as many zeros as we want, start next 1's seq
          arc(5, 1, 6),     arc(5, 0, false),  % 1's sequence in progress
          arc(6, 1, false), arc(6, 0, 6)       % end of automaton, another 1 will fail
-        ]).
+        ]),
+    labeling([], Sequence).
+
+exampleBuilder(Clues, Sequence, Size):-
+        buildAutomaton(Clues, 1, [], [], States, Arcs),!,
+        length(Sequence, Size),
+        automaton(Sequence, States, Arcs),
+        labeling([], Sequence).
+        
+        
