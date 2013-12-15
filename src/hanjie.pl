@@ -7,12 +7,25 @@
 
 test(Filename):-
         statistics(runtime, [T0|_]),
-        hanjie(Filename),
+        hanjie(Filename, _BoardRows),
         statistics(runtime, [T1|_]),
         T is T1 - T0,
         format('Hanjie took ~3d sec.~n', [T]).
 
-hanjie(Filename) :-
+solve(Filename):-
+        findall(Board, (
+                          statistics(runtime, [T0|_]),
+                          hanjie(Filename, Board),
+                          statistics(runtime, [T1|_]),
+                          T is T1 - T0,
+                          prettyPrint(Board),
+                          format('Solution found in ~3d sec.~n', [T])
+                       ), Boards),
+        length(Boards, Solutions),
+        print('Found '), print(Solutions), print(' solutions.'), nl,
+        fd_statistics.
+
+hanjie(Filename, BoardRows) :-
         print('Reading from file..'), nl,
         readFile(Filename, ClueRows, ClueCols, NumberOfRows, NumberOfCols),
         generateBoard(NumberOfRows, NumberOfCols, BoardRows), !,
@@ -29,10 +42,8 @@ hanjie(Filename) :-
         print('Constraining cols..'), nl,
         constrainBoard(BoardCols, ClueCols, NumberOfCols, ClueColStates, ClueColArcs),
         print('Labeling..'), nl,
-        labeling([], FlatBoard),
-        prettyPrint(BoardRows), nl, nl, nl, nl,
-        false.
-        
+        labeling([ff,up], FlatBoard).
+
 prettyPrint([]).
 prettyPrint([H|T]) :-
         prettyRow(H), nl,
