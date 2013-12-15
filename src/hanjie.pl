@@ -44,13 +44,88 @@ hanjie(Filename, BoardRows) :-
         labeling([ff,up], FlatBoard).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%          MENU            %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+menu:-
+        print('Welcome to Hanjie Solver - solving nonograms in a jiffy with prolog CLP and automatons galore!'), nl,
+        print('1 - Help'), nl,
+        print('2 - Generate a Puzzle'), nl,
+        print('3 - Solve a Puzzle'), nl,
+        print('4 - Exit'), nl,
+        getOption(Option),
+        ( Option =:= 1,
+          printHelp,
+          menu
+          ;
+          Option =:= 2,
+          generatePuzzle,
+          menu          
+          ;
+          Option =:= 3,
+          solvePuzzle,
+          menu
+          ;
+          Option =:= 4,
+          true
+        ).
+             
+generatePuzzle:-
+        print('Puzzle to generate'), nl,
+        print('How many rows?'), nl,
+        getNumber(Rows),
+        print('How many columns?'), nl,
+        getNumber(Cols),
+        print('Which filename to write to? (Warning: this will overwrite the file you specify!)'), nl,
+        getString(Filename),
+        generateRandomBoard(Rows, Cols, Filename),
+        pressEnter.
+
+solvePuzzle:-
+        print('Specify the filename of the puzzle to solve'), nl,
+        getString(Filename),
+        solve(Filename),
+        pressEnter.
+        
+getNumber(Number):-
+        print('> '),
+        read_line(NumberCodes),
+        number_codes(Number, NumberCodes).
+
+getString(String):-
+        print('> '),
+        read_line(StringCodes),
+        atom_codes(String, StringCodes).
+
+pressEnter:-
+        print('Press enter to continue'), nl, print('> '),
+        skip_line.
+
+printHelp:-
+        print('Hanjie is a simple puzzle game.'), nl,
+        pressEnter.
+
+getOption(Option):-
+        print('> '),
+        get_code(Code),
+        CurrentOption is Code - 48, % '1' to 1
+        skip_line,
+        (
+           (CurrentOption < 1 ; CurrentOption > 4) ->
+                print('Invalid option! Please input a number between 1 and 4!'), nl,
+                getOption(Option)
+            ;
+            Option is CurrentOption
+        ).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%         PRINTING         %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 printSolutions([]).
 printSolutions([Board-Time|BoardsAndTimes]):-
         prettyPrint(Board),
-        format('Solution above found in ~3d sec.~n', [Time]),
+        format('Solution above found in ~3d sec.~n', [Time]), nl,
         printSolutions(BoardsAndTimes).
 
 prettyPrint([]).
@@ -58,7 +133,7 @@ prettyPrint([Row|Board]) :-
         length(Row, Length),
         prettyFrame(Length),
         prettyPrintAux([Row|Board]), 
-        prettyFrame(Length), nl, !.
+        prettyFrame(Length), !.
 
 prettyFrame(FrameLength):-
         print('+-'),
@@ -153,7 +228,7 @@ readStream(Stream, Rows, Cols) :-
         !, print('Invalid File!'), false.
 
 writeFile(FileName, Rows, Cols) :-
-        open(FileName, write, Stream),
+        open(FileName, write, Stream, [if_exists(default)]),
         writeStream(Stream, Rows, Cols),
         close(Stream).
 
@@ -269,9 +344,23 @@ generateRandomBoard(NumberOfRows, NumberOfCols, FileName) :-
         print('Randomized board was saved to '), print(FileName), nl.
 
 generateRandomList(List, NumberOfElements) :-
-        length(List, NumberOfElements),
-        (foreach(X,List) do (random(0, 100, Y), X is mod(Y, 2) ) ),
-        sum(List, #>=, 1).
+        length(TempList, NumberOfElements),
+        randomizeElements(TempList),
+        validateNumberOfOnes(TempList, List).
+
+randomizeElements([]).
+randomizeElements([X|List]):-
+        random(0, 100, Y),
+        X is mod(Y, 2),
+        randomizeElements(List).
+
+validateNumberOfOnes([X|List], [Y|List]):-
+        sumlist([X|List], OnesCounter),
+        (OnesCounter > 0 ->
+                Y is X
+                ;
+                Y is 1
+        ).
 
 generateRandomRows([], _ ).
 generateRandomRows([Row | Rows], NumberOfCols) :-
