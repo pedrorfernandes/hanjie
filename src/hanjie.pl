@@ -109,7 +109,7 @@ makePuzzleClues:-
         print('> '),
         read(ClueRows),
         skip_line,
-        print('Please input a list of lists followed by a dot. These will be the clues for the rows.'), nl,
+        print('Please input a list of lists followed by a dot. These will be the clues for the columns.'), nl,
         print('For example: [[3],[1,1],[1,1],[2]].'), nl,
         print('> '),
         read(ClueCols),
@@ -190,7 +190,7 @@ prettyPrintAux([H|T]) :-
         print('| '),
         prettyRow(H), 
         print('|'), nl,
-        prettyPrintAux(T).
+        prettyPrintAux(T).                          
 
 prettyRow([]).
 prettyRow([H|T]):-
