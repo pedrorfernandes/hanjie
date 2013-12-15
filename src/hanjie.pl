@@ -51,22 +51,27 @@ menu:-
         print('Welcome to Hanjie Solver - solving nonograms in a jiffy with prolog CLP and automatons galore!'), nl,
         print('1 - Help'), nl,
         print('2 - Generate a Puzzle'), nl,
-        print('3 - Solve a Puzzle'), nl,
-        print('4 - Exit'), nl,
-        getOption(Option),
+        print('3 - Make your Puzzle'), nl,
+        print('4 - Solve a Puzzle'), nl,
+        print('5 - Exit'), nl,
+        getOption(Option), !,
         ( Option =:= 1,
           printHelp,
           menu
           ;
           Option =:= 2,
           generatePuzzle,
-          menu          
+          menu        
           ;
           Option =:= 3,
-          solvePuzzle,
+          makePuzzle,
           menu
           ;
           Option =:= 4,
+          solvePuzzle,
+          menu
+          ;
+          Option =:= 5,
           true
         ).
              
@@ -79,6 +84,17 @@ generatePuzzle:-
         print('Which filename to write to? (Warning: this will overwrite the file you specify!)'), nl,
         getString(Filename),
         generateRandomBoard(Rows, Cols, Filename),
+        pressEnter.
+
+makePuzzle:-
+        print('Please input a list of lists followed by a dot'), nl,
+        print('For example: [[0,1,0],[1,0,1],[0,0,1]].'), nl,
+        print('> '),
+        read(BoardRows),
+        skip_line,
+        print('Which filename to write to? (Warning: this will overwrite the file you specify!)'), nl,
+        getString(Filename),
+        generateCluesToFile(BoardRows, Filename),
         pressEnter.
 
 solvePuzzle:-
@@ -98,7 +114,7 @@ getString(String):-
         atom_codes(String, StringCodes).
 
 pressEnter:-
-        print('Press enter to continue'), nl, print('> '),
+        print('Press enter to continue...'), nl, print('> '),
         skip_line.
 
 printHelp:-
@@ -111,7 +127,7 @@ getOption(Option):-
         CurrentOption is Code - 48, % '1' to 1
         skip_line,
         (
-           (CurrentOption < 1 ; CurrentOption > 4) ->
+           (CurrentOption < 1 ; CurrentOption > 5) ->
                 print('Invalid option! Please input a number between 1 and 4!'), nl,
                 getOption(Option)
             ;
@@ -139,7 +155,7 @@ prettyFrame(FrameLength):-
         print('+-'),
         prettyFrameAux(FrameLength).
 
-prettyFrameAux(0):- print('-+'), nl.
+prettyFrameAux(0):- print('+'), nl.
 prettyFrameAux(FrameLength):-
         FrameLength < 0 -> true;
         print('--'),
@@ -150,7 +166,7 @@ prettyPrintAux([]).
 prettyPrintAux([H|T]) :-
         print('| '),
         prettyRow(H), 
-        print(' |'), nl,
+        print('|'), nl,
         prettyPrintAux(T).
 
 prettyRow([]).
@@ -160,53 +176,6 @@ prettyRow([H|T]):-
 
 prettyPiece(0) :- print('  ').
 prettyPiece(1) :- print('# ').
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%       CONSTRAINTS        %%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-flatten([],[]).
-flatten([H|T],Vars) :-
-        flatten(T,TVars),
-        append(H,TVars,Vars).
-
-constrainBoard(_Board, _ClueRows, 0, _ClueRowStates, _ClueRowArcs).
-constrainBoard(Board, ClueRows, CurrentRow, ClueRowStates, ClueRowArcs) :-
-        nth1(CurrentRow, Board, Sequence),
-        nth1(CurrentRow, ClueRows, ClueRow),
-        nth1(CurrentRow, ClueRowStates, States),
-        nth1(CurrentRow, ClueRowArcs, Arcs),
-        sum(ClueRow, #=, Sum),
-        sum(Sequence, #=, Sum),
-        automaton(Sequence, States, Arcs),
-        NextRow is CurrentRow - 1,
-        constrainBoard(Board, ClueRows, NextRow, ClueRowStates, ClueRowArcs).
-
-generateAutomatons(_ClueRows, 0, FinalStates, FinalArcs, FinalStates, FinalArcs).
-generateAutomatons(ClueRows, CurrentRow, CurrentStates, CurrentArcs, FinalStates, FinalArcs) :-
-        nth1(CurrentRow, ClueRows, ClueRow),
-        buildAutomaton(ClueRow, 1, [], [], States, Arcs), !,
-        append([States], CurrentStates, NewStates),
-        append([Arcs], CurrentArcs, NewArcs),
-        NextRow is CurrentRow - 1,
-        generateAutomatons(ClueRows, NextRow, NewStates, NewArcs, FinalStates, FinalArcs).  
-
-generateBoard(NumberOfRows, NumberOfCols, Board) :-
-        generateList(Board, NumberOfRows),
-        generateRows(Board, NumberOfCols).
-
-generateList(List, NumberOfElements) :-
-        length(List, NumberOfElements).
-
-generateRows([], _ ).
-generateRows([Row | Rows], NumberOfCols) :-
-        generateList(Row, NumberOfCols),
-        domain(Row, 0, 1),
-        generateRows(Rows, NumberOfCols).
-
-getPiece(Board, RowNumber, ColNumber, Piece):-
-        nth1(RowNumber, Board, Row),
-        nth1(ColNumber, Row, Piece).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%        FILE I/O          %%%%
@@ -237,6 +206,54 @@ writeStream(Stream, Rows, Cols) :-
         write(Stream, Rows), write(Stream, '.\n'),
         write(Stream, columns), write(Stream, '.\n'),
         write(Stream, Cols), write(Stream, '.\n').
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%       CONSTRAINTS        %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+flatten([],[]).
+flatten([H|T],Vars) :-
+        flatten(T,TVars),
+        append(H,TVars,Vars).
+
+constrainBoard(_Board, _ClueRows, 0, _ClueRowStates, _ClueRowArcs).
+constrainBoard(Board, ClueRows, CurrentRow, ClueRowStates, ClueRowArcs) :-
+        nth1(CurrentRow, Board, Sequence),
+        nth1(CurrentRow, ClueRows, ClueRow),
+        nth1(CurrentRow, ClueRowStates, States),
+        nth1(CurrentRow, ClueRowArcs, Arcs),
+        sum(ClueRow, #=, Sum),
+        sum(Sequence, #=, Sum),
+        (Sum > 0 -> automaton(Sequence, States, Arcs) ; true ), % if the row hasn't any 1's, then we already know it's filled with 0's
+        NextRow is CurrentRow - 1,
+        constrainBoard(Board, ClueRows, NextRow, ClueRowStates, ClueRowArcs).
+
+generateAutomatons(_ClueRows, 0, FinalStates, FinalArcs, FinalStates, FinalArcs).
+generateAutomatons(ClueRows, CurrentRow, CurrentStates, CurrentArcs, FinalStates, FinalArcs) :-
+        nth1(CurrentRow, ClueRows, ClueRow),
+        buildAutomaton(ClueRow, 1, [], [], States, Arcs), !,
+        append([States], CurrentStates, NewStates),
+        append([Arcs], CurrentArcs, NewArcs),
+        NextRow is CurrentRow - 1,
+        generateAutomatons(ClueRows, NextRow, NewStates, NewArcs, FinalStates, FinalArcs).  
+
+generateBoard(NumberOfRows, NumberOfCols, Board) :-
+        generateList(Board, NumberOfRows),
+        generateRows(Board, NumberOfCols).
+
+generateList(List, NumberOfElements) :-
+        length(List, NumberOfElements).
+
+generateRows([], _ ).
+generateRows([Row | Rows], NumberOfCols) :-
+        generateList(Row, NumberOfCols),
+        domain(Row, 0, 1),
+        generateRows(Rows, NumberOfCols).
+
+getPiece(Board, RowNumber, ColNumber, Piece):-
+        nth1(RowNumber, Board, Row),
+        nth1(ColNumber, Row, Piece).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%        AUTOMATON         %%%%
@@ -372,6 +389,14 @@ generateClues([Sequence|Board], Clues, FinalClues):-
         getClues([], Sequence, GeneratedClues),
         append(Clues, [GeneratedClues], NextClues),
         generateClues(Board, NextClues, FinalClues).
+
+generateCluesToFile(BoardRows, Filename):-
+        transpose(BoardRows, BoardCols),
+        generateClues(BoardRows, [], ClueRows),
+        generateClues(BoardCols, [], ClueCols),
+        writeFile(Filename, ClueRows, ClueCols),
+        prettyPrint(BoardRows),
+        print('Puzzle was saved to '), print(Filename), nl.
 
 % This automaton is merely a counter
 % It will count the first sequence of 1's in a binary sequence
