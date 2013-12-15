@@ -56,29 +56,30 @@ menu:-
         print('5 - Solve a Puzzle'), nl,
         print('6 - Exit'), nl,
         getOption(Option), !,
-        ( Option =:= 1,
-          printHelp,
-          menu
-          ;
-          Option =:= 2,
-          generatePuzzle,
-          menu        
-          ;
-          Option =:= 3,
-          makePuzzleBoard,
-          menu
-          ;
-          Option =:= 4,
-          makePuzzleClues,
-          menu
-          ;
-          Option =:= 5,
-          solvePuzzle,
-          menu
-          ;
-          Option =:= 6,
-          true
-        ).
+        doOption(Option).
+
+doOption(1):-
+       printHelp,
+       menu.
+
+doOption(2):-
+       generatePuzzle,
+       menu.
+
+doOption(3):-
+       makePuzzleBoard,
+       menu.
+
+doOption(4):-
+       makePuzzleClues,
+       menu.
+
+doOption(5):-
+       solvePuzzle,
+       menu.
+
+doOption(6):-
+       true.
              
 generatePuzzle:-
         print('Puzzle to generate'), nl,
