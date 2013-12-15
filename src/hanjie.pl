@@ -3,26 +3,25 @@
 :- use_module(library(system), [now/1]).
 :- use_module(library(random), [random/3, setrand/1]).
 
-% :- use_module(library(fdbg)).
-
-test(Filename):-
-        statistics(runtime, [T0|_]),
-        hanjie(Filename, _BoardRows),
-        statistics(runtime, [T1|_]),
-        T is T1 - T0,
-        format('Hanjie took ~3d sec.~n', [T]).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%          MAIN            %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 solve(Filename):-
-        findall(Board, (
-                          statistics(runtime, [T0|_]),
+        statistics(runtime, [TotalStart|_]),
+        findall(Board-Time, (
+                          statistics(runtime, [StartTime|_]),
                           hanjie(Filename, Board),
-                          statistics(runtime, [T1|_]),
-                          T is T1 - T0,
-                          prettyPrint(Board),
-                          format('Solution found in ~3d sec.~n', [T])
-                       ), Boards),
-        length(Boards, Solutions),
-        print('Found '), print(Solutions), print(' solutions.'), nl,
+                          statistics(runtime, [EndTime|_]),
+                          Time is EndTime - StartTime
+                       ), 
+                BoardsAndTimes),
+        statistics(runtime, [TotalEnd|_]),
+        TotalTime is TotalEnd - TotalStart,
+        printSolutions(BoardsAndTimes),
+        format('Search for all solutions ended in ~3d sec.~n', [TotalTime]),
+        length(BoardsAndTimes, Solutions),
+        print('Found '), print(Solutions), print(' solution(s).'), nl,
         fd_statistics.
 
 hanjie(Filename, BoardRows) :-
@@ -44,22 +43,52 @@ hanjie(Filename, BoardRows) :-
         print('Labeling..'), nl,
         labeling([ff,up], FlatBoard).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%         PRINTING         %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+printSolutions([]).
+printSolutions([Board-Time|BoardsAndTimes]):-
+        prettyPrint(Board),
+        format('Solution above found in ~3d sec.~n', [Time]),
+        printSolutions(BoardsAndTimes).
+
 prettyPrint([]).
-prettyPrint([H|T]) :-
-        prettyRow(H), nl,
-        prettyPrint(T).
+prettyPrint([Row|Board]) :-
+        length(Row, Length),
+        prettyFrame(Length),
+        prettyPrintAux([Row|Board]), 
+        prettyFrame(Length), nl, !.
+
+prettyFrame(FrameLength):-
+        print('+-'),
+        prettyFrameAux(FrameLength).
+
+prettyFrameAux(0):- print('-+'), nl.
+prettyFrameAux(FrameLength):-
+        FrameLength < 0 -> true;
+        print('--'),
+        NextLength is FrameLength - 1,
+        prettyFrameAux(NextLength).
+
+prettyPrintAux([]).
+prettyPrintAux([H|T]) :-
+        print('| '),
+        prettyRow(H), 
+        print(' |'), nl,
+        prettyPrintAux(T).
 
 prettyRow([]).
 prettyRow([H|T]):-
         prettyPiece(H),
         prettyRow(T).
 
-prettyPiece(Piece) :-
-        Piece =:= 0 ->
-            print('  ')
-        ;
-        Piece =:= 1 ->
-            print('# ').
+prettyPiece(0) :- print('  ').
+prettyPiece(1) :- print('# ').
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%       CONSTRAINTS        %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 flatten([],[]).
 flatten([H|T],Vars) :-
@@ -104,6 +133,10 @@ getPiece(Board, RowNumber, ColNumber, Piece):-
         nth1(RowNumber, Board, Row),
         nth1(ColNumber, Row, Piece).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%        FILE I/O          %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 readFile(FileName, Rows, Cols, NumberOfRows, NumberOfCols) :-
         open(FileName, read, Stream),
         readStream(Stream, Rows, Cols),
@@ -129,6 +162,10 @@ writeStream(Stream, Rows, Cols) :-
         write(Stream, Rows), write(Stream, '.\n'),
         write(Stream, columns), write(Stream, '.\n'),
         write(Stream, Cols), write(Stream, '.\n').
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%        AUTOMATON         %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 buildAutomaton([], _CurrentState, FinalStates, FinalArcs, FinalStates, FinalArcs).
 
@@ -183,6 +220,10 @@ generateArcs(Clue, StartingState, CurrentState, Arcs, FinalArcs, Connection):-
         append(NextArcs1, [arc(CurrentState, 1, NextState)], NextArcs2),
         generateArcs(Clue, StartingState, NextState, NextArcs2, FinalArcs, Connection).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%         EXAMPLES         %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % Take this brief example of restricting clues
 % This automaton restricts the clues [2,2] for a sequence of any size
 % Possible solution: [1, 1, 0, 1, 1]
@@ -203,13 +244,18 @@ exampleSequence(Sequence, Size) :-
         ]),
     labeling([], Sequence).
 
+% By using build automaton, we can generate exactly the same automaton as above
+% If we instantiate Sequence as [2,2]
 exampleBuilder(Clues, Sequence, Size):-
         buildAutomaton(Clues, 1, [], [], States, Arcs),!,
         length(Sequence, Size),
         automaton(Sequence, States, Arcs),
         labeling([], Sequence).
 
-%% BOARD RANDOMIZER
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%      BOARD GENERATOR     %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 generateRandomBoard(NumberOfRows, NumberOfCols, FileName) :-
         now(Time),
         setrand(Time),
@@ -219,8 +265,8 @@ generateRandomBoard(NumberOfRows, NumberOfCols, FileName) :-
         generateClues(BoardRows, [], ClueRows),
         generateClues(BoardCols, [], ClueCols),
         writeFile(FileName, ClueRows, ClueCols),
-        print('Randomized Board is saved to '), print(FileName), nl,
-        prettyPrint(BoardRows).
+        prettyPrint(BoardRows),
+        print('Randomized board was saved to '), print(FileName), nl.
 
 generateRandomList(List, NumberOfElements) :-
         length(List, NumberOfElements),
@@ -238,6 +284,12 @@ generateClues([Sequence|Board], Clues, FinalClues):-
         append(Clues, [GeneratedClues], NextClues),
         generateClues(Board, NextClues, FinalClues).
 
+% This automaton is merely a counter
+% It will count the first sequence of 1's in a binary sequence
+% For example: [1,1,0,1,1]
+% The automaton will count 1+1+0, split the sequence to get the remainder sequence, which is [1,1]
+% and it will recursively send the remainder to another automaton
+% generating the clues list [2,2]
 getClues(FinalClues, [], FinalClues).
 getClues(Clues, Seq, FinalClues) :-
         sumlist(Seq, NumberOfOnes),
