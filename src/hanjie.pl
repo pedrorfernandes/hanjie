@@ -51,9 +51,10 @@ menu:-
         print('Welcome to Hanjie Solver - solving nonograms in a jiffy with prolog CLP and automatons galore!'), nl,
         print('1 - Help'), nl,
         print('2 - Generate a Puzzle'), nl,
-        print('3 - Make your Puzzle'), nl,
-        print('4 - Solve a Puzzle'), nl,
-        print('5 - Exit'), nl,
+        print('3 - Create Puzzle Board'), nl,
+        print('4 - Create Puzzle Clues'), nl,
+        print('5 - Solve a Puzzle'), nl,
+        print('6 - Exit'), nl,
         getOption(Option), !,
         ( Option =:= 1,
           printHelp,
@@ -64,14 +65,18 @@ menu:-
           menu        
           ;
           Option =:= 3,
-          makePuzzle,
+          makePuzzleBoard,
           menu
           ;
           Option =:= 4,
-          solvePuzzle,
+          makePuzzleClues,
           menu
           ;
           Option =:= 5,
+          solvePuzzle,
+          menu
+          ;
+          Option =:= 6,
           true
         ).
              
@@ -86,7 +91,7 @@ generatePuzzle:-
         generateRandomBoard(Rows, Cols, Filename),
         pressEnter.
 
-makePuzzle:-
+makePuzzleBoard:-
         print('Please input a list of lists followed by a dot'), nl,
         print('For example: [[0,1,0],[1,0,1],[0,0,1]].'), nl,
         print('> '),
@@ -95,6 +100,23 @@ makePuzzle:-
         print('Which filename to write to? (Warning: this will overwrite the file you specify!)'), nl,
         getString(Filename),
         generateCluesToFile(BoardRows, Filename),
+        pressEnter.
+
+makePuzzleClues:-
+        print('Please input a list of lists followed by a dot. These will be the clues for the rows.'), nl,
+        print('For example: [[4],[1,1],[2],[1]].'), nl,
+        print('> '),
+        read(ClueRows),
+        skip_line,
+        print('Please input a list of lists followed by a dot. These will be the clues for the rows.'), nl,
+        print('For example: [[3],[1,1],[1,1],[2]].'), nl,
+        print('> '),
+        read(ClueCols),
+        skip_line,
+        print('Which filename to write to? (Warning: this will overwrite the file you specify!)'), nl,
+        getString(Filename),
+        writeFile(Filename, ClueRows, ClueCols),
+        print('File was saved with success!'), nl,
         pressEnter.
 
 solvePuzzle:-
@@ -127,8 +149,8 @@ getOption(Option):-
         CurrentOption is Code - 48, % '1' to 1
         skip_line,
         (
-           (CurrentOption < 1 ; CurrentOption > 5) ->
-                print('Invalid option! Please input a number between 1 and 4!'), nl,
+           (CurrentOption < 1 ; CurrentOption > 6) ->
+                print('Invalid option! Please input a number between 1 and 6!'), nl,
                 getOption(Option)
             ;
             Option is CurrentOption
