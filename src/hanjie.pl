@@ -343,9 +343,6 @@ generateArcs(Clue, StartingState, CurrentState, Arcs, FinalArcs, Connection):-
 % This automaton restricts the clues [2,2] for a sequence of any size
 % Possible solution: [1, 1, 0, 1, 1]
 % Or even:           [0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0]
-% We must pay attention that prolog automatons don't have a final state
-% So, in order to get the correct sequence, we must use sum/3 to 
-% validate first before running this automaton
 exampleSequence(Sequence, Size) :-
     length(Sequence, Size),
     automaton(Sequence,
